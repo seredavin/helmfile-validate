@@ -45,6 +45,62 @@ func TestExtractFunctions(t *testing.T) {
 			expected: []string{},
 		},
 		{
+			name:     "yaml comment line should be ignored",
+			content:  `# {{ exec "echo" "test" }}`,
+			expected: []string{},
+		},
+		{
+			name:     "yaml comment with template should be ignored",
+			content: `releases:
+  - name: test
+    # {{ readFile "file.yaml" }}
+    values: {{ toYaml .Values }}`,
+			expected: []string{"toYaml"},
+		},
+		{
+			name:     "inline comment before template should be ignored",
+			content:  `value: # {{ exec "cmd" }} {{ toYaml .Values }}`,
+			expected: []string{}, // In YAML, # comments out everything after it on the same line
+		},
+		{
+			name:     "hash inside string should not be treated as comment",
+			content:  `{{ exec "echo" "# not a comment" }}`,
+			expected: []string{"exec"},
+		},
+		{
+			name:     "gotmpl file with commented template",
+			content: `# {{ exec "echo" "commented" }}
+{{- define "test" }}
+  value: {{ toYaml .Values }}
+{{- end }}`,
+			expected: []string{"toYaml"},
+		},
+		{
+			name:     "gotmpl file with inline comment",
+			content: `{{- define "test" }}
+  value: {{ toYaml .Values }}
+  # {{ exec "commented" }}
+  # config: {{ readFile "config.yaml" }}
+{{- end }}`,
+			expected: []string{"toYaml"},
+		},
+		{
+			name:     "gotmpl file with comment in define block",
+			content: `{{- define "test" }}
+  # {{ exec "commented exec" }}
+  # {{ readFile "file.yaml" }}
+  value: {{ toYaml .Values }}
+{{- end }}`,
+			expected: []string{"toYaml"},
+		},
+		{
+			name:     "gotmpl file with hash in string",
+			content: `{{- define "test" }}
+  value: {{ exec "echo" "# not a comment" }}
+{{- end }}`,
+			expected: []string{"exec"},
+		},
+		{
 			name:     "if statement with function",
 			content:  `{{ if isFile "path" }}exists{{ end }}`,
 			expected: []string{"isFile"},

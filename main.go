@@ -1048,13 +1048,60 @@ func extractFunctions(content string) []string {
 
 	// Extract only content inside {{ ... }} blocks (with multiline support)
 	templateBlockPattern := regexp.MustCompile(`(?s)\{\{-?(.*?)-?\}\}`)
-	templateBlocks := templateBlockPattern.FindAllStringSubmatch(content, -1)
+	templateBlocks := templateBlockPattern.FindAllStringSubmatchIndex(content, -1)
 
-	for _, block := range templateBlocks {
-		if len(block) < 2 {
+	// Split content into lines for comment checking
+	lines := strings.Split(content, "\n")
+
+	for _, blockIndex := range templateBlocks {
+		if len(blockIndex) < 4 {
 			continue
 		}
-		blockContent := block[1]
+		// blockIndex[0] is start of match, blockIndex[1] is end of match
+		blockStart := blockIndex[0]
+		blockContentStart := blockIndex[2]
+		blockContentEnd := blockIndex[3]
+
+		// Find which line contains this template block
+		lineStart := 0
+		lineNum := 0
+		for i, line := range lines {
+			lineEnd := lineStart + len(line)
+			if blockStart >= lineStart && blockStart <= lineEnd {
+				lineNum = i
+				break
+			}
+			lineStart = lineEnd + 1 // +1 for the newline character
+		}
+
+		// Check if the line is commented (starts with # before the template)
+		if lineNum < len(lines) {
+			line := lines[lineNum]
+			// Find position of template block in the line
+			lineBlockStart := blockStart - lineStart
+			if lineBlockStart < 0 {
+				lineBlockStart = 0
+			}
+			if lineBlockStart > len(line) {
+				lineBlockStart = len(line)
+			}
+			// Check if there's a # before the template block on this line
+			lineBeforeBlock := line[:lineBlockStart]
+			if strings.Contains(lineBeforeBlock, "#") {
+				// Simple heuristic: if there's a # and it's not in quotes, skip
+				hashIndex := strings.LastIndex(lineBeforeBlock, "#")
+				if hashIndex >= 0 {
+					// Check if # is inside quotes by checking if it's after an odd number of quotes
+					quotesBeforeHashInLine := strings.Count(line[:hashIndex], `"`) + strings.Count(line[:hashIndex], "'")
+					if quotesBeforeHashInLine%2 == 0 {
+						// # is not inside quotes, this is a comment - skip this template
+						continue
+					}
+				}
+			}
+		}
+
+		blockContent := content[blockContentStart:blockContentEnd]
 
 		// Skip template comments {{/* ... */}}
 		if strings.HasPrefix(strings.TrimSpace(blockContent), "/*") {
