@@ -37,7 +37,9 @@ func TestGoGetter(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			defer os.RemoveAll(d)
+			defer func() {
+				_ = os.RemoveAll(d)
+			}()
 
 			st := &HelmState{
 				logger:   logger,

@@ -3910,8 +3910,14 @@ releases:
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.envs != nil {
 				for k, v := range tc.envs {
-					os.Setenv(k, v)
-					defer os.Unsetenv(k)
+					if err := os.Setenv(k, v); err != nil {
+						t.Fatalf("failed to set env var %s: %v", k, err)
+					}
+					defer func(key string) {
+						if err := os.Unsetenv(key); err != nil {
+							t.Logf("failed to unset env var %s: %v", key, err)
+						}
+					}(k)
 				}
 			}
 			wantUpgrades := tc.upgraded

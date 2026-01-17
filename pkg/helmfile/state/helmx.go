@@ -283,7 +283,7 @@ func (st *HelmState) goGetterChart(chart, dir, cacheDir string, force bool) (str
 	_, err := remote.Parse(chart)
 	if err != nil {
 		if force {
-			return "", fmt.Errorf("Parsing url from dir failed due to error %q.\nContinuing the process assuming this is a regular Helm chart or a local dir.", err.Error())
+			return "", fmt.Errorf("parsing url from dir failed due to error %q, continuing the process assuming this is a regular Helm chart or a local dir", err.Error())
 		}
 	} else {
 		r := remote.NewRemote(st.logger, "", st.fs)

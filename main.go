@@ -16,15 +16,12 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/environment"
-	helmfileFs "github.com/seredavin/helmfile-validate/pkg/helmfile/filesystem"
+	"github.com/seredavin/helmfile-validate/pkg/helmfile/filesystem"
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/helmexec"
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/remote"
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/state"
-
-	"github.com/seredavin/helmfile-validate/pkg/filesystem"
-	helmfileTmpl "github.com/seredavin/helmfile-validate/pkg/helmfile/tmpl"
-	"github.com/seredavin/helmfile-validate/pkg/tmpl"
-	"github.com/seredavin/helmfile-validate/pkg/tracking"
+	"github.com/seredavin/helmfile-validate/pkg/helmfile/tmpl"
+	"github.com/seredavin/helmfile-validate/pkg/helmfile/tracking"
 )
 
 // FunctionUsage tracks where a function is used
@@ -416,7 +413,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 	}
 
 	// Create tracking filesystem
-	baseFs := helmfileFs.DefaultFileSystem()
+	baseFs := filesystem.DefaultFileSystem()
 	trackingFs := tracking.NewTrackingFileSystem(baseFs)
 
 	// Create logger
@@ -471,7 +468,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			}
 
 			// Create renderer and render template
-			renderer := helmfileTmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
+			renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
 			renderedBytes, err := renderer.RenderToBytes(file)
 			if err != nil {
 				// If rendering fails, return error but still track the file
@@ -495,7 +492,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 	}
 
 	if strings.HasSuffix(mainFile, ".gotmpl") {
-		renderer := helmfileTmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, emptyEnv.Values)
+		renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, emptyEnv.Values)
 		renderedBytes, err := renderer.RenderToBytes(mainFile)
 		if err != nil {
 			// If rendering fails, still try to parse
@@ -550,7 +547,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 					if templateData == nil {
 						templateData = make(map[string]any)
 					}
-					renderer := helmfileTmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
+					renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
 					_, _ = renderer.RenderToBytes(helmfilePath)
 				}
 			}

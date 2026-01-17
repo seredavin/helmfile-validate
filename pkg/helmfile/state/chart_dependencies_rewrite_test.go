@@ -178,7 +178,9 @@ dependencies:
 			if err != nil {
 				t.Fatalf("failed to create temp dir: %v", err)
 			}
-			defer os.RemoveAll(tempDir)
+			defer func() {
+				_ = os.RemoveAll(tempDir)
+			}()
 
 			// Create Chart.yaml if provided
 			if tt.chartYaml != "" {
@@ -246,7 +248,9 @@ func TestRewriteChartDependencies_CleanupRestoresOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	originalChart := `apiVersion: v2
 name: test-chart
@@ -303,7 +307,9 @@ func TestRewriteChartDependencies_PreservesOtherFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	chartYaml := `apiVersion: v2
 name: test-chart
@@ -412,7 +418,9 @@ dependencies:
 			if err != nil {
 				t.Fatalf("failed to create temp dir: %v", err)
 			}
-			defer os.RemoveAll(tempDir)
+			defer func() {
+				_ = os.RemoveAll(tempDir)
+			}()
 
 			if err := tt.setupFunc(tempDir); err != nil {
 				t.Fatalf("setup failed: %v", err)
@@ -441,7 +449,9 @@ func TestRewriteChartDependencies_WindowsStylePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	// Test with backslash (Windows-style) paths
 	// Note: file:// URLs should use forward slashes, but test handling of edge cases

@@ -24,7 +24,7 @@ func TestDownloadfile(t *testing.T) {
 			name: "successful download of file content",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprint(w, "helmfile")
+				_, _ = fmt.Fprint(w, "helmfile")
 			},
 			wantContent: "helmfile",
 		},
@@ -32,7 +32,7 @@ func TestDownloadfile(t *testing.T) {
 			name: "404 error when file not found",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
-				fmt.Fprint(w, "not found")
+				_, _ = fmt.Fprint(w, "not found")
 			},
 			wantError: "download .*? error, code: 404",
 		},
@@ -40,7 +40,7 @@ func TestDownloadfile(t *testing.T) {
 			name: "500 error on server failure",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprint(w, "server error")
+				_, _ = fmt.Fprint(w, "server error")
 			},
 			wantError: "download .*? error, code: 500",
 		},
@@ -48,7 +48,7 @@ func TestDownloadfile(t *testing.T) {
 			name: "error due to invalid file path",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				fmt.Fprint(w, "helmfile")
+				_, _ = fmt.Fprint(w, "helmfile")
 			},
 			filepath:  "abc/down.txt",
 			wantError: "open .*? no such file or directory",

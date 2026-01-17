@@ -21,7 +21,9 @@ func TestOCIChartFileLock(t *testing.T) {
 		// Create a temporary directory for the test
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -64,7 +66,9 @@ func TestOCIChartFileLock(t *testing.T) {
 	t.Run("lock prevents concurrent writes", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 		dataFilePath := filepath.Join(tempDir, "data.txt")
@@ -82,7 +86,9 @@ func TestOCIChartFileLock(t *testing.T) {
 				fileLock := flock.New(lockFilePath)
 				err := fileLock.Lock()
 				require.NoError(t, err)
-				defer fileLock.Unlock()
+				defer func() {
+					_ = fileLock.Unlock()
+				}()
 
 				// Check if file exists (like double-check locking pattern)
 				if _, err := os.Stat(dataFilePath); os.IsNotExist(err) {
@@ -108,7 +114,9 @@ func TestOCIChartFileLock(t *testing.T) {
 	t.Run("lock file is created in correct directory", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		// Simulate nested chart path structure
 		chartPath := filepath.Join(tempDir, "registry", "charts", "myapp", "1.0.0")
@@ -135,7 +143,9 @@ func TestOCIChartFileLock(t *testing.T) {
 	t.Run("TryLockContext respects timeout", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -181,7 +191,9 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 	t.Run("multiple shared locks can be acquired simultaneously", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-shared-lock-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -234,7 +246,9 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 	t.Run("exclusive lock blocks shared locks", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-excl-block-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -256,7 +270,7 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 				return
 			}
 			if locked {
-				readerLock.Unlock()
+				_ = readerLock.Unlock()
 			}
 			readerResult <- locked
 		}()
@@ -276,7 +290,9 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 	t.Run("shared locks block exclusive lock", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-shared-block-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -298,7 +314,7 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 				return
 			}
 			if locked {
-				writerLock.Unlock()
+				_ = writerLock.Unlock()
 			}
 			writerResult <- locked
 		}()
@@ -318,7 +334,9 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 	t.Run("exclusive lock acquired after shared lock released", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-release-test-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -337,7 +355,7 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 
 			locked, err := writerLock.TryLockContext(ctx, 10*time.Millisecond)
 			if err == nil && locked {
-				writerLock.Unlock()
+				_ = writerLock.Unlock()
 				writerDone <- true
 				return
 			}
@@ -365,7 +383,9 @@ func TestChartLockResultRelease(t *testing.T) {
 	t.Run("release exclusive lock", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-release-excl-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test.lock")
 		fileLock := flock.New(lockFilePath)
@@ -390,13 +410,15 @@ func TestChartLockResultRelease(t *testing.T) {
 		locked, err := fileLock2.TryLock()
 		require.NoError(t, err)
 		require.True(t, locked, "should be able to acquire lock after release")
-		fileLock2.Unlock()
+		_ = fileLock2.Unlock()
 	})
 
 	t.Run("release shared lock", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-release-shared-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		lockFilePath := filepath.Join(tempDir, "test.lock")
 		fileLock := flock.New(lockFilePath)
@@ -421,7 +443,7 @@ func TestChartLockResultRelease(t *testing.T) {
 		locked, err := fileLock2.TryLock()
 		require.NoError(t, err)
 		require.True(t, locked, "should be able to acquire exclusive lock after shared release")
-		fileLock2.Unlock()
+		_ = fileLock2.Unlock()
 	})
 
 	t.Run("release nil result is safe", func(t *testing.T) {
@@ -438,7 +460,9 @@ func TestOCIChartDoubleCheckLocking(t *testing.T) {
 	t.Run("second waiter uses cache populated by first", func(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-double-check-*")
 		require.NoError(t, err)
-		defer os.RemoveAll(tempDir)
+		defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 		chartPath := filepath.Join(tempDir, "myrepo", "mychart", "1.0.0")
 		lockFilePath := chartPath + ".lock"
@@ -459,7 +483,9 @@ func TestOCIChartDoubleCheckLocking(t *testing.T) {
 				fileLock := flock.New(lockFilePath)
 				err := fileLock.Lock()
 				require.NoError(t, err)
-				defer fileLock.Unlock()
+				defer func() {
+					_ = fileLock.Unlock()
+				}()
 
 				// Double-check: after acquiring lock, check if directory exists
 				if _, err := os.Stat(chartPath); os.IsNotExist(err) {

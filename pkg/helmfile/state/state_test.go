@@ -3089,7 +3089,7 @@ func TestHelmState_Delete(t *testing.T) {
 					t.Errorf("DeleteReleases() for %s error = %v, wantErr %v", tt.name, errs, tt.wantErr)
 					return
 				}
-			} else if !(reflect.DeepEqual(tt.deleted, helm.Deleted) && (len(affectedReleases.Deleted) == len(tt.deleted))) {
+			} else if !reflect.DeepEqual(tt.deleted, helm.Deleted) || len(affectedReleases.Deleted) != len(tt.deleted) {
 				t.Errorf("unexpected deletions happened: expected %v, got %v", tt.deleted, helm.Deleted)
 			}
 		})
@@ -4695,8 +4695,8 @@ func TestAppendVerifyFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			st.ReleaseSetSpec.Repositories = tt.repo
-			st.ReleaseSetSpec.HelmDefaults = tt.helmDefaults
+			st.Repositories = tt.repo
+			st.HelmDefaults = tt.helmDefaults
 			flags := st.appendVerifyFlags(nil, tt.release)
 			assert.Equal(t, tt.expected, flags)
 		})

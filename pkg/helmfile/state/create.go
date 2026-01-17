@@ -187,7 +187,7 @@ func (c *StateCreator) ParseAndLoad(content []byte, baseDir, file string, envNam
 
 	if !evaluateBases {
 		if len(state.Bases) > 0 {
-			return nil, errors.New("nested `base` helmfile is unsupported. please submit a feature request if you need this!")
+			return nil, errors.New("nested `base` helmfile is unsupported, please submit a feature request if you need this")
 		}
 	} else {
 		state, err = c.loadBases(envValues, overrode, state, baseDir)

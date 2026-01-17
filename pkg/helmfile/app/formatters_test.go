@@ -39,7 +39,9 @@ func TestFormatAsTable(t *testing.T) {
 	}
 
 	result, err := testutil.CaptureStdout(func() {
-		FormatAsTable(h)
+		if err := FormatAsTable(h); err != nil {
+			t.Errorf("FormatAsTable failed: %v", err)
+		}
 	})
 
 	assert.NoError(t, err)
@@ -76,7 +78,9 @@ func TestFormatAsJson(t *testing.T) {
 		t.Errorf("error reading %s: %v", output, err)
 	}
 	result, err := testutil.CaptureStdout(func() {
-		FormatAsJson(h)
+		if err := FormatAsJson(h); err != nil {
+			t.Errorf("FormatAsJson failed: %v", err)
+		}
 	})
 
 	assert.NoError(t, err)

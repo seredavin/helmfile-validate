@@ -2758,7 +2758,7 @@ func ConditionEnabled(r ReleaseSpec, values map[string]any) (bool, error) {
 	iValues := values
 	keys := strings.Split(r.Condition, ".")
 	if keys[len(keys)-1] != "enabled" {
-		return false, fmt.Errorf("Condition value must be in the form 'foo.enabled' where 'foo' can be modified as necessary")
+		return false, fmt.Errorf("condition value must be in the form 'foo.enabled' where 'foo' can be modified as necessary")
 	}
 
 	currentKey := ""
@@ -3852,7 +3852,7 @@ func (st *HelmState) generateVanillaValuesFiles(release *ReleaseSpec) ([]string,
 
 	valuesSecretsRendered, ok := valuesMapSecretsRendered["values"].([]any)
 	if !ok {
-		return nil, fmt.Errorf("Failed to render values in %s for release %s: type %T isn't supported", st.FilePath, release.Name, valuesMapSecretsRendered["values"])
+		return nil, fmt.Errorf("failed to render values in %s for release %s: type %T isn't supported", st.FilePath, release.Name, valuesMapSecretsRendered["values"])
 	}
 
 	generatedFiles, err := st.generateTemporaryReleaseValuesFiles(release, valuesSecretsRendered)
@@ -3967,7 +3967,7 @@ func (st *HelmState) namespaceAndValuesFlags(helm helmexec.Interface, release *R
 	if len(release.SetValues) > 0 {
 		setFlags, err := st.setFlags(release.SetValues)
 		if err != nil {
-			return nil, files, fmt.Errorf("Failed to render set value entry in %s for release %s: %v", st.FilePath, release.Name, err)
+			return nil, files, fmt.Errorf("failed to render set value entry in %s for release %s: %v", st.FilePath, release.Name, err)
 		}
 
 		flags = append(flags, setFlags...)
@@ -3976,7 +3976,7 @@ func (st *HelmState) namespaceAndValuesFlags(helm helmexec.Interface, release *R
 	if len(release.SetStringValues) > 0 {
 		setStringFlags, err := st.setStringFlags(release.SetStringValues)
 		if err != nil {
-			return nil, files, fmt.Errorf("Failed to render set string value entry in %s for release %s: %v", st.FilePath, release.Name, err)
+			return nil, files, fmt.Errorf("failed to render set string value entry in %s for release %s: %v", st.FilePath, release.Name, err)
 		}
 
 		flags = append(flags, setStringFlags...)

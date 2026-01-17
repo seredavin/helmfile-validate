@@ -568,8 +568,7 @@ func (helm *execer) DecryptSecret(context HelmContext, name string, flags ...str
 			var data helmSecretDataV3
 			err := yaml.Unmarshal(secretBytes, &data)
 			if err != nil {
-				return "", fmt.Errorf("Could not unmarshall helm secret plugin V3 decrypted file to a yaml string\n"+
-					"You may consider upgrading your helm secrets plugin to >4.0.\n %s", err.Error())
+				return "", fmt.Errorf("could not unmarshall helm secret plugin V3 decrypted file to a yaml string, you may consider upgrading your helm secrets plugin to >4.0: %s", err.Error())
 			}
 			secretBytes = []byte(data.Data)
 		}

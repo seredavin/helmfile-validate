@@ -25,7 +25,7 @@ type Run struct {
 
 func NewRun(st *state.HelmState, helm helmexec.Interface, ctx *Context) (*Run, error) {
 	if helm == nil {
-		return nil, fmt.Errorf("Assertion failed: helmexec.Interface must not be nil")
+		return nil, fmt.Errorf("assertion failed: helmexec.Interface must not be nil")
 	}
 
 	if !helm.IsHelm3() && !helm.IsHelm4() {

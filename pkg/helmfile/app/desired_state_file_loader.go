@@ -96,7 +96,7 @@ func (ld *desiredStateLoader) Load(f string, opts LoadOpts) (*state.HelmState, e
 
 	if ld.overrideKubeContext != "" {
 		if st.OverrideKubeContext != "" {
-			return nil, errors.New("err: Cannot use option --kube-context and set attribute kubeContext.")
+			return nil, errors.New("err: cannot use option --kube-context and set attribute kubeContext")
 		}
 		st.OverrideKubeContext = ld.overrideKubeContext
 		// HelmDefaults.KubeContext is also overridden in here
@@ -106,14 +106,14 @@ func (ld *desiredStateLoader) Load(f string, opts LoadOpts) (*state.HelmState, e
 
 	if ld.namespace != "" {
 		if st.OverrideNamespace != "" {
-			return nil, errors.New("err: Cannot use option --namespace and set attribute namespace.")
+			return nil, errors.New("err: cannot use option --namespace and set attribute namespace")
 		}
 		st.OverrideNamespace = ld.namespace
 	}
 
 	if ld.chart != "" {
 		if st.OverrideChart != "" {
-			return nil, errors.New("err: Cannot use option --chart and set attribute chart.")
+			return nil, errors.New("err: cannot use option --chart and set attribute chart")
 		}
 		st.OverrideChart = ld.chart
 	}

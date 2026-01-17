@@ -139,17 +139,17 @@ func TestEnvironmentVariableReading(t *testing.T) {
 			original := os.Getenv(envvar.AWSSDKLogLevel)
 			defer func() {
 				if original == "" {
-					os.Unsetenv(envvar.AWSSDKLogLevel)
+					_ = os.Unsetenv(envvar.AWSSDKLogLevel)
 				} else {
-					os.Setenv(envvar.AWSSDKLogLevel, original)
+					_ = os.Setenv(envvar.AWSSDKLogLevel, original)
 				}
 			}()
 
 			// Set test env var
 			if tt.envValue == "" {
-				os.Unsetenv(envvar.AWSSDKLogLevel)
+				_ = os.Unsetenv(envvar.AWSSDKLogLevel)
 			} else {
-				os.Setenv(envvar.AWSSDKLogLevel, tt.envValue)
+				_ = os.Setenv(envvar.AWSSDKLogLevel, tt.envValue)
 			}
 
 			// Read and process like ValsInstance() does

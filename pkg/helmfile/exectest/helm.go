@@ -165,7 +165,7 @@ func (helm *Helm) DiffRelease(context helmexec.HelmContext, name, chart, namespa
 }
 func (helm *Helm) ReleaseStatus(context helmexec.HelmContext, release string, flags ...string) error {
 	if strings.Contains(release, "notFound") {
-		return errors.New("Error: release: not found")
+		return errors.New("error: release: not found")
 	}
 	if strings.Contains(release, "error") {
 		return errors.New("error")
