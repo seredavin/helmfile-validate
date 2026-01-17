@@ -29,6 +29,7 @@ import (
 	"go.uber.org/zap"
 	cliv3 "helm.sh/helm/v3/pkg/cli"
 	cliv4 "helm.sh/helm/v4/pkg/cli"
+	"reflect"
 
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/argparser"
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/environment"
@@ -1462,8 +1463,12 @@ func (st *HelmState) processChartification(chartification *Chartify, release *Re
 	}
 
 	// Pass --oci-plain-http flag to chartify for Helm 4 OCI support
+	// This field was added in chartify v0.26.0, so we use reflection for compatibility
 	if opts.HelmOCIPlainHTTP {
-		chartifyOpts.OCIPlainHTTP = true
+		chartifyOptsValue := reflect.ValueOf(&chartifyOpts).Elem()
+		if ociPlainHTTPField := chartifyOptsValue.FieldByName("OCIPlainHTTP"); ociPlainHTTPField.IsValid() && ociPlainHTTPField.CanSet() {
+			ociPlainHTTPField.SetBool(true)
+		}
 	}
 
 	includeCRDs := true

@@ -3,6 +3,7 @@ package plugins
 import (
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -45,8 +46,12 @@ func ValsInstance() (*vals.Runtime, error) {
 			logLevel = "off"
 		}
 
-		// Set AWS SDK log level for vals library
-		opts.AWSLogLevel = logLevel
+		// Set AWS SDK log level for vals library (if field exists)
+		// This field was added in vals v0.43.0, so we use reflection for compatibility
+		optsValue := reflect.ValueOf(&opts).Elem()
+		if awsLogLevelField := optsValue.FieldByName("AWSLogLevel"); awsLogLevelField.IsValid() && awsLogLevelField.CanSet() {
+			awsLogLevelField.SetString(logLevel)
+		}
 
 		// Also suppress vals' own internal logging unless user wants verbose output
 		// This prevents vals' log messages (separate from AWS SDK logs) from exposing credentials
