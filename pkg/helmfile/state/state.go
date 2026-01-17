@@ -797,10 +797,14 @@ func (st *HelmState) isReleaseInstalled(context helmexec.HelmContext, helm helme
 			flags = append(flags, "--namespace", release.Namespace)
 		}
 		err := helm.ReleaseStatus(context, release.Name, flags...)
-		if err != nil && strings.Contains(err.Error(), "Error: release: not found") {
-			return false, nil
+		if err != nil {
+			// Check for both "Error:" and "error:" as different helm versions may use different capitalization
+			errStr := err.Error()
+			if strings.Contains(errStr, "release: not found") || strings.Contains(errStr, "Release: not found") {
+				return false, nil
+			}
 		}
-		return true, err
+		return err == nil, err
 	}
 
 	out, err := st.listReleases(context, helm, &release)

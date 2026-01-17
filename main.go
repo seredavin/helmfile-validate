@@ -329,10 +329,13 @@ func outputValidation(validation *ValidationResult) {
 	_, _ = red.Println("=== Validation FAILED ===")
 	fmt.Println()
 
-	if validation.Mode == "blacklist" {
+	if validation.Mode == "no-hooks" {
+		_, _ = red.Printf("HOOKS found!\n")
+		fmt.Printf("Hooks are forbidden when using -no-hooks flag\n\n")
+	} else if validation.Mode == "blacklist" {
 		_, _ = red.Printf("BLACKLISTED functions found!\n")
 		fmt.Printf("Forbidden functions: %s\n\n", strings.Join(validation.Rules, ", "))
-	} else {
+	} else if strings.Contains(validation.Mode, "whitelist") {
 		_, _ = red.Printf("Functions NOT in WHITELIST found!\n")
 		fmt.Printf("Allowed functions: %s\n\n", strings.Join(validation.Rules, ", "))
 	}
@@ -350,7 +353,32 @@ func outputValidation(validation *ValidationResult) {
 		fmt.Println()
 	}
 
-	_, _ = red.Println("Please remove or replace the forbidden functions to pass validation.")
+	// Print hook violations if any
+	if len(validation.HookViolations) > 0 {
+		_, _ = red.Printf("Hook Violations (%d):\n", len(validation.HookViolations))
+		fmt.Println()
+
+		for _, hook := range validation.HookViolations {
+			_, _ = yellow.Printf("  ✗ Hook in %s", hook.File)
+			if hook.Release != "" {
+				fmt.Printf(" (release: %s)", hook.Release)
+			}
+			fmt.Println()
+			if len(hook.Events) > 0 {
+				fmt.Printf("    Events: %s\n", strings.Join(hook.Events, ", "))
+			}
+			if hook.Command != "" {
+				fmt.Printf("    Command: %s\n", hook.Command)
+			}
+			fmt.Println()
+		}
+	}
+
+	if validation.Mode == "no-hooks" {
+		_, _ = red.Println("Please remove all hooks to pass validation.")
+	} else {
+		_, _ = red.Println("Please remove or replace the forbidden functions to pass validation.")
+	}
 }
 
 // resolvePath resolves a file path relative to baseDir, handling both absolute and relative paths
@@ -805,6 +833,26 @@ func outputText(result *ScanResult, absPath string) {
 
 	if len(result.FilesScanned) == 0 {
 		fmt.Println("No helmfile template files found.")
+		// Still show hooks if any were found
+		if len(result.Hooks) > 0 {
+			fmt.Println()
+			fmt.Println("=== Hooks Found ===")
+			fmt.Printf("Total hooks found: %d\n\n", len(result.Hooks))
+			for _, hook := range result.Hooks {
+				fmt.Printf("  Hook in %s", hook.File)
+				if hook.Release != "" {
+					fmt.Printf(" (release: %s)", hook.Release)
+				}
+				fmt.Println()
+				if len(hook.Events) > 0 {
+					fmt.Printf("    Events: %s\n", strings.Join(hook.Events, ", "))
+				}
+				if hook.Command != "" {
+					fmt.Printf("    Command: %s\n", hook.Command)
+				}
+				fmt.Println()
+			}
+		}
 		return
 	}
 
@@ -878,6 +926,26 @@ func outputText(result *ScanResult, absPath string) {
 		fmt.Println()
 	}
 
+	// Print hooks information
+	if len(result.Hooks) > 0 {
+		fmt.Println("=== Hooks Found ===")
+		fmt.Printf("Total hooks found: %d\n\n", len(result.Hooks))
+		for _, hook := range result.Hooks {
+			fmt.Printf("  Hook in %s", hook.File)
+			if hook.Release != "" {
+				fmt.Printf(" (release: %s)", hook.Release)
+			}
+			fmt.Println()
+			if len(hook.Events) > 0 {
+				fmt.Printf("    Events: %s\n", strings.Join(hook.Events, ", "))
+			}
+			if hook.Command != "" {
+				fmt.Printf("    Command: %s\n", hook.Command)
+			}
+			fmt.Println()
+		}
+	}
+
 	// Summary
 	if !showUnknown && !showExecOnly && !showInsecure {
 		fmt.Println("=== Summary ===")
@@ -885,6 +953,9 @@ func outputText(result *ScanResult, absPath string) {
 		fmt.Printf("Sprig functions: %d\n", len(result.SprigFunctions))
 		if len(result.UnknownFunctions) > 0 {
 			fmt.Printf("Unknown functions: %d (potential errors!)\n", len(result.UnknownFunctions))
+		}
+		if len(result.Hooks) > 0 {
+			fmt.Printf("Hooks: %d\n", len(result.Hooks))
 		}
 	}
 }

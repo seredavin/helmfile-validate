@@ -984,6 +984,88 @@ func TestCommandLineFlags(t *testing.T) {
 	t.Run("no-hooks flag", func(t *testing.T) {
 		testNoHooksFlag(t, binaryPath)
 	})
+
+	t.Run("text output format", func(t *testing.T) {
+		testTextOutputFormat(t, binaryPath)
+	})
+}
+
+func testTextOutputFormat(t *testing.T, binaryPath string) {
+	tmpDir, err := os.MkdirTemp("", "helmfile-validate-text-output-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	helmfileContent := `releases:
+  - name: test-release
+    chart: ./charts/test
+    values:
+      - values.yaml
+      - config: {{ toYaml .Values | nindent 8 }}
+    set:
+      - name: test
+        value: {{ exec "echo" (list "test") | trim }}
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "helmfile.yaml"), []byte(helmfileContent), 0644); err != nil {
+		t.Fatalf("Failed to write helmfile.yaml: %v", err)
+	}
+
+	// Test default text output (without -json flag)
+	cmd := exec.Command(binaryPath, tmpDir)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Command failed: %v, output: %s", err, output)
+	}
+
+	outputStr := string(output)
+
+	// Check basic text output structure
+	if !strings.Contains(outputStr, "Scanning directory:") {
+		t.Error("Text output should start with 'Scanning directory:'")
+	}
+	if !strings.Contains(outputStr, "Found") && !strings.Contains(outputStr, "template files") {
+		t.Error("Text output should mention found template files")
+	}
+	if !strings.Contains(outputStr, "=== Used Template Functions ===") {
+		t.Error("Text output should contain '=== Used Template Functions ===' section")
+	}
+	if !strings.Contains(outputStr, "Total known functions used:") {
+		t.Error("Text output should show total known functions count")
+	}
+	if !strings.Contains(outputStr, "--- Helmfile-specific functions") {
+		t.Error("Text output should contain '--- Helmfile-specific functions' section")
+	}
+	if !strings.Contains(outputStr, "--- Sprig functions") {
+		t.Error("Text output should contain '--- Sprig functions' section")
+	}
+	if !strings.Contains(outputStr, "=== Summary ===") {
+		t.Error("Text output should contain '=== Summary ===' section")
+	}
+
+	// Check that functions are listed with their usage count
+	if !strings.Contains(outputStr, "exec") {
+		t.Error("Text output should show 'exec' function")
+	}
+	if !strings.Contains(outputStr, "toYaml") {
+		t.Error("Text output should show 'toYaml' function")
+	}
+	if !strings.Contains(outputStr, "(used") {
+		t.Error("Text output should show usage count for functions")
+	}
+
+	// Check that files are listed under each function
+	if !strings.Contains(outputStr, "helmfile.yaml") {
+		t.Error("Text output should list files where functions are used")
+	}
+
+	// Verify output is NOT JSON
+	var jsonTest map[string]any
+	if err := json.Unmarshal(output, &jsonTest); err == nil {
+		t.Error("Text output should NOT be valid JSON when -json flag is not used")
+	}
 }
 
 func buildTestBinary(path string) error {
@@ -1061,6 +1143,16 @@ func testExecFlag(t *testing.T, binaryPath string) {
 	if strings.Contains(outputStr, "toYaml") {
 		t.Error("Output should not contain toYaml when using -exec flag")
 	}
+	// Check text output format
+	if !strings.Contains(outputStr, "Scanning directory:") {
+		t.Error("Text output should start with 'Scanning directory:'")
+	}
+	if !strings.Contains(outputStr, "Found") && !strings.Contains(outputStr, "template files") {
+		t.Error("Text output should mention found template files")
+	}
+	if !strings.Contains(outputStr, "Helmfile-specific functions") {
+		t.Error("Text output should contain 'Helmfile-specific functions' section")
+	}
 }
 
 func testUnknownFlag(t *testing.T, binaryPath string) {
@@ -1096,6 +1188,13 @@ func testUnknownFlag(t *testing.T, binaryPath string) {
 	// Should not show known functions
 	if strings.Contains(outputStr, "toYaml") {
 		t.Error("Output should not contain known functions when using -unknown flag")
+	}
+	// Check text output format
+	if !strings.Contains(outputStr, "Unknown/Custom functions") {
+		t.Error("Text output should contain 'Unknown/Custom functions' section")
+	}
+	if !strings.Contains(outputStr, "WARNING") {
+		t.Error("Text output should contain WARNING for unknown functions")
 	}
 }
 
@@ -1133,6 +1232,10 @@ func testInsecureFlag(t *testing.T, binaryPath string) {
 	// Should not show secure functions
 	if strings.Contains(outputStr, "toYaml") {
 		t.Error("Output should not contain secure functions when using -insecure flag")
+	}
+	// Check text output format
+	if !strings.Contains(outputStr, "Helmfile-specific functions") {
+		t.Error("Text output should contain 'Helmfile-specific functions' section")
 	}
 }
 
@@ -1192,12 +1295,24 @@ func testBlacklistFlag(t *testing.T, binaryPath string) {
 	if !strings.Contains(outputStr, "exec") {
 		t.Error("Output should mention the blacklisted function")
 	}
+	// Check text output format for validation failure
+	if !strings.Contains(outputStr, "Validation FAILED") {
+		t.Error("Text output should contain 'Validation FAILED' when blacklist is violated")
+	}
+	if !strings.Contains(outputStr, "BLACKLISTED functions found") {
+		t.Error("Text output should mention 'BLACKLISTED functions found'")
+	}
 
 	// Test with blacklist that should pass
 	cmd = exec.Command(binaryPath, "-blacklist", "readFile,envExec", tmpDir)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		t.Errorf("Command should pass when blacklisted functions are not found: %v, output: %s", err, output)
+	}
+	// Check text output format for validation success
+	outputStr = string(output)
+	if !strings.Contains(outputStr, "Validation PASSED") {
+		t.Error("Text output should contain 'Validation PASSED' when blacklist is not violated")
 	}
 }
 
@@ -1237,12 +1352,24 @@ func testWhitelistFlag(t *testing.T, binaryPath string) {
 	if !strings.Contains(outputStr, "exec") {
 		t.Error("Output should mention the non-whitelisted function")
 	}
+	// Check text output format for validation failure
+	if !strings.Contains(outputStr, "Validation FAILED") {
+		t.Error("Text output should contain 'Validation FAILED' when whitelist is violated")
+	}
+	if !strings.Contains(outputStr, "Functions NOT in WHITELIST found") {
+		t.Error("Text output should mention 'Functions NOT in WHITELIST found'")
+	}
 
 	// Test with whitelist that should pass
 	cmd = exec.Command(binaryPath, "-whitelist", "exec,toYaml,list", tmpDir)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		t.Errorf("Command should pass when all functions are whitelisted: %v, output: %s", err, output)
+	}
+	// Check text output format for validation success
+	outputStr = string(output)
+	if !strings.Contains(outputStr, "Validation PASSED") {
+		t.Error("Text output should contain 'Validation PASSED' when whitelist is not violated")
 	}
 }
 
