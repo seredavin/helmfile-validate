@@ -531,7 +531,49 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		if !strings.Contains(err.Error(), "not implemented") && !strings.Contains(err.Error(), "helm") {
 			fmt.Fprintf(os.Stderr, "Warning: error loading helmfile state: %v\n", err)
 		}
-	} else if state != nil {
+		// Even if loading fails, try to parse the file to extract hooks
+		// This allows us to detect hooks even if full state loading fails
+		if parsedState == nil {
+			parsedState, _ = creator.Parse(fileBytes, baseDir, mainFile)
+		}
+	}
+
+	// Extract hooks from state or parsedState
+	// Use state if available, otherwise use parsedState
+	stateForHooks := state
+	if stateForHooks == nil {
+		stateForHooks = parsedState
+	}
+
+	if stateForHooks != nil {
+		relMainFile, _ := filepath.Rel(absPath, mainFile)
+		if relMainFile == "" {
+			relMainFile = mainFile
+		}
+		// Extract state-level hooks
+		for _, hook := range stateForHooks.Hooks {
+			hookUsage := &HookUsage{
+				File:    relMainFile,
+				Events:  hook.Events,
+				Command: hook.Command,
+			}
+			result.Hooks = append(result.Hooks, hookUsage)
+		}
+		// Extract release-level hooks
+		for _, release := range stateForHooks.Releases {
+			for _, hook := range release.Hooks {
+				hookUsage := &HookUsage{
+					File:    relMainFile,
+					Release: release.Name,
+					Events:  hook.Events,
+					Command: hook.Command,
+				}
+				result.Hooks = append(result.Hooks, hookUsage)
+			}
+		}
+	}
+
+	if state != nil {
 		// Explicitly track base files that were loaded
 		// Bases are loaded via LoadFile which should track them, but let's also explicitly read them
 		// to ensure they're tracked even if LoadFile doesn't fully process them
@@ -654,6 +696,33 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 
 		// Extract release-level hooks
 		for _, release := range state.Releases {
+			for _, hook := range release.Hooks {
+				hookUsage := &HookUsage{
+					File:    relMainFile,
+					Release: release.Name,
+					Events:  hook.Events,
+					Command: hook.Command,
+				}
+				result.Hooks = append(result.Hooks, hookUsage)
+			}
+		}
+	} else if parsedState != nil {
+		// If state loading failed but we have parsed state, extract hooks from it
+		relMainFile, _ := filepath.Rel(absPath, mainFile)
+		if relMainFile == "" {
+			relMainFile = mainFile
+		}
+		// Extract state-level hooks
+		for _, hook := range parsedState.Hooks {
+			hookUsage := &HookUsage{
+				File:    relMainFile,
+				Events:  hook.Events,
+				Command: hook.Command,
+			}
+			result.Hooks = append(result.Hooks, hookUsage)
+		}
+		// Extract release-level hooks
+		for _, release := range parsedState.Releases {
 			for _, hook := range release.Hooks {
 				hookUsage := &HookUsage{
 					File:    relMainFile,
