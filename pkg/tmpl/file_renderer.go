@@ -3,7 +3,7 @@ package tmpl
 import (
 	"strings"
 
-	"github.com/kirillseredavin/helmfile-validate/pkg/filesystem"
+	"github.com/seredavin/helmfile-validate/pkg/filesystem"
 )
 
 type FileRenderer struct {

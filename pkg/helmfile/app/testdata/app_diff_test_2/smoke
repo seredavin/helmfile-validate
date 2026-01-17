@@ -1,0 +1,30 @@
+processing file "helmfile.yaml" in directory "."
+changing working directory to "/path/to"
+merged environment: &{default  map[] map[]}
+10 release(s) found in helmfile.yaml
+
+processing 5 groups of releases in this order:
+GROUP RELEASES
+1     logging, front-proxy
+2     database, servicemesh
+3     anotherbackend
+4     backend-v2
+5     frontend-v2, frontend-v3
+
+processing releases in group 1/5: logging, front-proxy
+processing releases in group 2/5: database, servicemesh
+processing releases in group 3/5: anotherbackend
+processing releases in group 4/5: backend-v2
+processing releases in group 5/5: frontend-v2, frontend-v3
+Affected releases are:
+  anotherbackend (charts/anotherbackend) UPDATED
+  backend-v1 (charts/backend) DELETED
+  backend-v2 (charts/backend) UPDATED
+  database (charts/mysql) UPDATED
+  front-proxy (stable/envoy) UPDATED
+  frontend-v1 (charts/frontend) DELETED
+  frontend-v3 (charts/frontend) UPDATED
+  logging (charts/fluent-bit) UPDATED
+  servicemesh (charts/istio) UPDATED
+
+changing working directory back to "/path/to"

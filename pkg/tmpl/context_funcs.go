@@ -15,8 +15,8 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/kirillseredavin/helmfile-validate/pkg/maputil"
-	"github.com/kirillseredavin/helmfile-validate/pkg/yaml"
+	"github.com/seredavin/helmfile-validate/pkg/maputil"
+	"github.com/seredavin/helmfile-validate/pkg/yaml"
 )
 
 type Values = map[string]any

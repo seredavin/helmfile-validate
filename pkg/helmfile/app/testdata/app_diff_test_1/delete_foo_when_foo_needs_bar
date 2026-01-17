@@ -1,0 +1,15 @@
+processing file "helmfile.yaml" in directory "."
+changing working directory to "/path/to"
+merged environment: &{default  map[] map[]}
+2 release(s) found in helmfile.yaml
+
+processing 1 groups of releases in this order:
+GROUP RELEASES
+1     default//bar
+
+processing releases in group 1/1: default//bar
+Affected releases are:
+  bar (mychart2) UPDATED
+  foo (mychart1) DELETED
+
+changing working directory back to "/path/to"

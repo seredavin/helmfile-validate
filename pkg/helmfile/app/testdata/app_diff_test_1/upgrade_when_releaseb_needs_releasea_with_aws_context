@@ -1,0 +1,17 @@
+processing file "helmfile.yaml" in directory "."
+changing working directory to "/path/to"
+merged environment: &{default  map[] map[]}
+2 release(s) found in helmfile.yaml
+
+processing 2 groups of releases in this order:
+GROUP RELEASES
+1     arn:aws:eks:us-east-1:1234567890:cluster/myekscluster/namespaceA/releaseA
+2     arn:aws:eks:us-east-1:1234567890:cluster/myekscluster/namespaceA/releaseB
+
+processing releases in group 1/2: arn:aws:eks:us-east-1:1234567890:cluster/myekscluster/namespaceA/releaseA
+processing releases in group 2/2: arn:aws:eks:us-east-1:1234567890:cluster/myekscluster/namespaceA/releaseB
+Affected releases are:
+  releaseA (mychart1) UPDATED
+  releaseB (mychart2) UPDATED
+
+changing working directory back to "/path/to"

@@ -11,9 +11,20 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/helmfile/vals"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
-	"github.com/kirillseredavin/helmfile-validate/pkg/filesystem"
-	"github.com/kirillseredavin/helmfile-validate/pkg/tmpl"
+	"github.com/seredavin/helmfile-validate/pkg/helmfile/environment"
+	helmfileFs "github.com/seredavin/helmfile-validate/pkg/helmfile/filesystem"
+	"github.com/seredavin/helmfile-validate/pkg/helmfile/helmexec"
+	"github.com/seredavin/helmfile-validate/pkg/helmfile/remote"
+	"github.com/seredavin/helmfile-validate/pkg/helmfile/state"
+
+	"github.com/seredavin/helmfile-validate/pkg/filesystem"
+	helmfileTmpl "github.com/seredavin/helmfile-validate/pkg/helmfile/tmpl"
+	"github.com/seredavin/helmfile-validate/pkg/tmpl"
+	"github.com/seredavin/helmfile-validate/pkg/tracking"
 )
 
 // FunctionUsage tracks where a function is used
@@ -298,7 +309,10 @@ func outputJSONWithValidation(result *ScanResult, validation *ValidationResult) 
 	}
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(output)
+	if err := encoder.Encode(output); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding JSON output: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func outputValidation(validation *ValidationResult) {
@@ -309,41 +323,68 @@ func outputValidation(validation *ValidationResult) {
 	fmt.Println()
 	if validation.Valid {
 		green := color.New(color.FgGreen, color.Bold)
-		green.Println("=== Validation PASSED ===")
+		_, _ = green.Println("=== Validation PASSED ===")
 		fmt.Printf("Mode: %s\n", validation.Mode)
 		fmt.Printf("Rules: %s\n", strings.Join(validation.Rules, ", "))
 		return
 	}
 
-	red.Println("=== Validation FAILED ===")
+	_, _ = red.Println("=== Validation FAILED ===")
 	fmt.Println()
 
 	if validation.Mode == "blacklist" {
-		red.Printf("BLACKLISTED functions found!\n")
+		_, _ = red.Printf("BLACKLISTED functions found!\n")
 		fmt.Printf("Forbidden functions: %s\n\n", strings.Join(validation.Rules, ", "))
 	} else {
-		red.Printf("Functions NOT in WHITELIST found!\n")
+		_, _ = red.Printf("Functions NOT in WHITELIST found!\n")
 		fmt.Printf("Allowed functions: %s\n\n", strings.Join(validation.Rules, ", "))
 	}
 
-	red.Printf("Violations (%d):\n", len(validation.Violations))
+	_, _ = red.Printf("Violations (%d):\n", len(validation.Violations))
 	fmt.Println()
 
 	for _, v := range validation.Violations {
-		yellow.Printf("  ✗ %s", v.Name)
+		_, _ = yellow.Printf("  ✗ %s", v.Name)
 		fmt.Printf(" (category: %s, used %d times)\n", v.Category, v.Count)
 		fmt.Println("    Found in:")
 		for _, file := range v.Files {
-			cyan.Printf("      - %s\n", file)
+			_, _ = cyan.Printf("      - %s\n", file)
 		}
 		fmt.Println()
 	}
 
-	red.Println("Please remove or replace the forbidden functions to pass validation.")
+	_, _ = red.Println("Please remove or replace the forbidden functions to pass validation.")
 }
 
-func scanDirectory(absPath string) *ScanResult {
-	// Get available FuncMap
+// resolvePath resolves a file path relative to baseDir, handling both absolute and relative paths
+func resolvePath(baseDir, path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	return filepath.Clean(filepath.Join(baseDir, path))
+}
+
+// findHelmfileYaml finds the main helmfile.yaml file in the directory
+func findHelmfileYaml(dir string) (string, error) {
+	// Try helmfile.yaml.gotmpl first, then helmfile.yaml, then helmfile.yml
+	candidates := []string{
+		filepath.Join(dir, "helmfile.yaml.gotmpl"),
+		filepath.Join(dir, "helmfile.yaml"),
+		filepath.Join(dir, "helmfile.yml"),
+	}
+
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+
+	return "", fmt.Errorf("no helmfile.yaml, helmfile.yml, or helmfile.yaml.gotmpl found in %s", dir)
+}
+
+// scanDirectoryUsingStateCreator uses helmfile's StateCreator to discover all template files
+func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
+	// Get available FuncMap for function categorization
 	r := tmpl.NewFileRenderer(filesystem.DefaultFileSystem(), absPath, nil)
 	funcMap := r.Context.CreateFuncMap()
 
@@ -363,28 +404,247 @@ func scanDirectory(absPath string) *ScanResult {
 		knownFuncs[name] = "helmfile"
 	}
 
-	// Find all template files
-	files, _ := findTemplateFiles(absPath)
-
 	result := &ScanResult{
 		Directory:    absPath,
 		FilesScanned: []string{},
 	}
 
-	if len(files) == 0 {
+	// Find main helmfile.yaml
+	mainFile, err := findHelmfileYaml(absPath)
+	if err != nil {
+		return result
+	}
+
+	// Create tracking filesystem
+	baseFs := helmfileFs.DefaultFileSystem()
+	trackingFs := tracking.NewTrackingFileSystem(baseFs)
+
+	// Create logger
+	config := zap.NewDevelopmentConfig()
+	config.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel) // Suppress most logs
+	logger, err := config.Build()
+	if err != nil {
+		// If logger creation fails, continue without logging
+		// This is non-critical for file discovery
+		return result
+	}
+	defer func() {
+		_ = logger.Sync() // Best effort sync on exit
+	}()
+	sugarLogger := logger.Sugar()
+
+	// Create vals runtime (dummy, we don't need it for file discovery)
+	valsRuntime := &vals.Runtime{}
+
+	// Create dummy getHelm function
+	getHelm := func(*state.HelmState) (helmexec.Interface, error) {
+		return nil, fmt.Errorf("not implemented")
+	}
+
+	// Create remote
+	rem := remote.NewRemote(sugarLogger, "", trackingFs.FileSystem)
+
+	// Create StateCreator
+	creator := state.NewCreator(sugarLogger, trackingFs.FileSystem, valsRuntime, getHelm, "", "", rem, false, "")
+
+	// Create LoadFile function for StateCreator
+	creator.LoadFile = func(inheritedEnv, overrodeEnv *environment.Environment, baseDir, file string, evaluateBases bool) (*state.HelmState, error) {
+		fileBytes, err := trackingFs.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+
+		// Render template if it's a .gotmpl file
+		if strings.HasSuffix(file, ".gotmpl") {
+			// Get merged values for template rendering
+			var templateData map[string]any
+			if inheritedEnv != nil {
+				templateData = inheritedEnv.Values
+			} else {
+				templateData = make(map[string]any)
+			}
+			if overrodeEnv != nil {
+				// Merge override values
+				for k, v := range overrodeEnv.Values {
+					templateData[k] = v
+				}
+			}
+
+			// Create renderer and render template
+			renderer := helmfileTmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
+			renderedBytes, err := renderer.RenderToBytes(file)
+			if err != nil {
+				// If rendering fails, return error but still track the file
+				return nil, fmt.Errorf("failed to render template %s: %w", file, err)
+			}
+			fileBytes = renderedBytes
+		}
+
+		return creator.ParseAndLoad(fileBytes, baseDir, file, "", false, evaluateBases, inheritedEnv, overrodeEnv)
+	}
+
+	// Load the main helmfile state
+	// We don't need environment values for file discovery, so use empty environment
+	emptyEnv := environment.New("")
+	baseDir := filepath.Dir(mainFile)
+
+	// Render template if main file is .gotmpl
+	fileBytes, err := trackingFs.ReadFile(mainFile)
+	if err != nil {
+		return result
+	}
+
+	if strings.HasSuffix(mainFile, ".gotmpl") {
+		renderer := helmfileTmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, emptyEnv.Values)
+		renderedBytes, err := renderer.RenderToBytes(mainFile)
+		if err != nil {
+			// If rendering fails, still try to parse
+		} else {
+			fileBytes = renderedBytes
+		}
+	}
+
+	state, err := creator.ParseAndLoad(fileBytes, baseDir, mainFile, "", true, true, emptyEnv, nil)
+	if err != nil {
+		// Ignore errors related to helm execution, we just need to discover files
+		// But log other errors for debugging
+		if !strings.Contains(err.Error(), "not implemented") && !strings.Contains(err.Error(), "helm") {
+			fmt.Fprintf(os.Stderr, "Warning: error loading helmfile state: %v\n", err)
+		}
+	} else if state != nil {
+		// Process helmfiles field to load nested helmfile files
+		// For template helmfiles (like build.gotmpl with readDir), we need to manually
+		// extract the pattern and find files, since full rendering requires values that may not be available
+		for _, hf := range state.Helmfiles {
+			helmfilePath := resolvePath(baseDir, hf.Path)
+
+			// If it's a template helmfile, try to read it and check if it uses readDir
+			if strings.HasSuffix(helmfilePath, ".gotmpl") {
+				content, err := trackingFs.ReadFile(helmfilePath)
+				if err == nil {
+					contentStr := string(content)
+					// Check if it contains readDir pattern - common pattern: readDir "directory"
+					if strings.Contains(contentStr, "readDir") {
+						// Try to extract directory pattern and manually find files
+						// Common pattern: {{ range $file := readDir "releases" }}
+						readDirPattern := regexp.MustCompile(`readDir\s+"([^"]+)"`)
+						matches := readDirPattern.FindAllStringSubmatch(contentStr, -1)
+						for _, match := range matches {
+							if len(match) > 1 {
+								dirPath := filepath.Join(baseDir, match[1])
+								// Try to read directory contents and track files
+								entries, err := os.ReadDir(dirPath)
+								if err == nil {
+									for _, entry := range entries {
+										if !entry.IsDir() {
+											filePath := filepath.Join(dirPath, entry.Name())
+											_, _ = trackingFs.ReadFile(filePath)
+										}
+									}
+								}
+							}
+						}
+					}
+					// Also try to render it (may fail but will track the file)
+					templateData := state.RenderedValues
+					if templateData == nil {
+						templateData = make(map[string]any)
+					}
+					renderer := helmfileTmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
+					_, _ = renderer.RenderToBytes(helmfilePath)
+				}
+			}
+		}
+
+		// Now expand and load all helmfiles
+		expandedHelmfiles, err := state.ExpandedHelmfiles()
+		if err == nil {
+			for _, hf := range expandedHelmfiles {
+				helmfilePath := resolvePath(baseDir, hf.Path)
+				// Load nested helmfile to track its files
+				_, err := creator.LoadFile(emptyEnv, nil, baseDir, helmfilePath, true)
+				if err != nil {
+					// But still try to read the file to track it
+					_, _ = trackingFs.ReadFile(helmfilePath)
+				}
+
+				// Also load values files from helmfiles
+				for _, val := range hf.Environment.OverrideValues {
+					if valStr, ok := val.(string); ok && valStr != "" {
+						valPath := resolvePath(baseDir, valStr)
+						_, _ = trackingFs.ReadFile(valPath)
+					}
+				}
+			}
+		}
+
+		// Track values files from releases (including files in parent directories)
+		for _, release := range state.Releases {
+			for _, val := range release.Values {
+				if valStr, ok := val.(string); ok && valStr != "" {
+					// Resolve path relative to baseDir (can be relative like ../values.yaml)
+					valPath := resolvePath(baseDir, valStr)
+					// Track the file (this will read it if it exists and contains templates)
+					_, _ = trackingFs.ReadFile(valPath)
+				}
+			}
+
+			// Also track secrets files
+			for _, secret := range release.Secrets {
+				if secretStr, ok := secret.(string); ok && secretStr != "" {
+					secretPath := resolvePath(baseDir, secretStr)
+					_, _ = trackingFs.ReadFile(secretPath)
+				}
+			}
+		}
+	}
+
+	// Get all files that were read/globbed
+	allFiles := trackingFs.GetAllFiles()
+
+	// Also find helper templates (_*.tpl) in the directory
+	helperTemplates, err := trackingFs.Glob(filepath.Join(absPath, "_*.tpl"))
+	if err == nil {
+		allFiles = append(allFiles, helperTemplates...)
+	}
+
+	if len(allFiles) == 0 {
 		return result
 	}
 
 	// Scan files for function usage
 	usageMap := make(map[string]*FunctionUsage)
+	seenFiles := make(map[string]bool)
 
-	for _, file := range files {
+	for _, file := range allFiles {
+		// Skip non-template files (only process .yaml, .yml, .gotmpl, .tpl files)
+		ext := filepath.Ext(file)
+		if ext != ".yaml" && ext != ".yml" && ext != ".gotmpl" && ext != ".tpl" {
+			continue
+		}
+
+		// Skip if we've already processed this file
+		if seenFiles[file] {
+			continue
+		}
+		seenFiles[file] = true
+
+		// Check if file exists and has template syntax
 		content, err := os.ReadFile(file)
 		if err != nil {
 			continue
 		}
 
-		relPath, _ := filepath.Rel(absPath, file)
+		// Only process files with template syntax
+		if !containsTemplateSyntax(string(content)) {
+			continue
+		}
+
+		relPath, err := filepath.Rel(absPath, file)
+		if err != nil {
+			// If relative path calculation fails, use absolute path as fallback
+			relPath = file
+		}
 		result.FilesScanned = append(result.FilesScanned, relPath)
 		funcs := extractFunctions(string(content))
 
@@ -435,10 +695,9 @@ func scanDirectory(absPath string) *ScanResult {
 	return result
 }
 
-func outputJSON(result *ScanResult) {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	encoder.Encode(result)
+func scanDirectory(absPath string) *ScanResult {
+	// Use StateCreator-based approach instead of file walking
+	return scanDirectoryUsingStateCreator(absPath)
 }
 
 func outputText(result *ScanResult, absPath string) {
@@ -584,57 +843,6 @@ func listAllFunctions() {
 	for _, name := range insecure {
 		fmt.Printf("  %s\n", name)
 	}
-}
-
-// findTemplateFiles finds all helmfile-related template files
-func findTemplateFiles(root string) ([]string, error) {
-	var files []string
-	seen := make(map[string]bool)
-
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // Skip errors
-		}
-
-		if info.IsDir() {
-			name := info.Name()
-			if strings.HasPrefix(name, ".") || name == "node_modules" || name == "vendor" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		filename := info.Name()
-		matched := false
-
-		// Check for template files
-		if strings.HasSuffix(filename, ".gotmpl") || strings.HasSuffix(filename, ".tpl") {
-			matched = true
-		}
-
-		// Check for helmfile*.yaml files
-		if strings.HasPrefix(filename, "helmfile") && strings.HasSuffix(filename, ".yaml") {
-			matched = true
-		}
-
-		// Check for values files
-		if strings.HasPrefix(filename, "values") && (strings.HasSuffix(filename, ".yaml") || strings.HasSuffix(filename, ".yml")) {
-			matched = true
-		}
-
-		if matched && !seen[path] {
-			// Verify it contains template syntax
-			content, err := os.ReadFile(path)
-			if err == nil && containsTemplateSyntax(string(content)) {
-				files = append(files, path)
-				seen[path] = true
-			}
-		}
-
-		return nil
-	})
-
-	return files, err
 }
 
 // containsTemplateSyntax checks if content has Go template syntax

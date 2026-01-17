@@ -1,7 +1,7 @@
 package tmpl
 
 import (
-	"github.com/kirillseredavin/helmfile-validate/pkg/filesystem"
+	"github.com/seredavin/helmfile-validate/pkg/filesystem"
 )
 
 type Context struct {

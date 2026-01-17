@@ -1,0 +1,186 @@
+package testhelper
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
+	ffs "github.com/seredavin/helmfile-validate/pkg/helmfile/filesystem"
+)
+
+type TestFs struct {
+	Cwd   string
+	dirs  map[string]bool
+	files map[string]string
+
+	GlobFixtures map[string][]string
+	DeleteFile   func(string) error
+
+	mu              sync.Mutex
+	fileReaderCalls int
+	successfulReads []string
+}
+
+func NewTestFs(files map[string]string) *TestFs {
+	dirs := map[string]bool{}
+	for abs := range files {
+		for d := filepath.ToSlash(filepath.Dir(abs)); !dirs[d]; d = filepath.ToSlash(filepath.Dir(d)) {
+			dirs[d] = true
+		}
+	}
+	return &TestFs{
+		Cwd:   "/path/to",
+		dirs:  dirs,
+		files: files,
+
+		successfulReads: []string{},
+
+		GlobFixtures: map[string][]string{},
+		DeleteFile:   func(string) (ret error) { return },
+	}
+}
+
+func (f *TestFs) ToFileSystem() *ffs.FileSystem {
+	curfs := ffs.FileSystem{
+		FileExistsAt:      f.FileExistsAt,
+		FileExists:        f.FileExists,
+		DirectoryExistsAt: f.DirectoryExistsAt,
+		ReadFile:          f.ReadFile,
+		Glob:              f.Glob,
+		Getwd:             f.Getwd,
+		Chdir:             f.Chdir,
+		Abs:               f.Abs,
+		DeleteFile:        f.DeleteFile,
+	}
+	trfs := ffs.FromFileSystem(curfs)
+	return trfs
+}
+
+func (f *TestFs) FileExistsAt(path string) bool {
+	var ok bool
+	if strings.HasPrefix(path, "/") {
+		_, ok = f.files[path]
+	} else {
+		_, ok = f.files[filepath.ToSlash(filepath.Join(f.Cwd, path))]
+	}
+	return ok
+}
+
+func (f *TestFs) FileExists(path string) (bool, error) {
+	return f.FileExistsAt(path), nil
+}
+
+func (f *TestFs) DirectoryExistsAt(path string) bool {
+	var ok bool
+	if strings.HasPrefix(path, "/") {
+		_, ok = f.dirs[path]
+	} else {
+		_, ok = f.dirs[filepath.ToSlash(filepath.Join(f.Cwd, path))]
+	}
+	return ok
+}
+
+func (f *TestFs) ReadFile(filename string) ([]byte, error) {
+	var str string
+	var ok bool
+	if strings.HasPrefix(filename, "/") {
+		str, ok = f.files[filename]
+	} else {
+		str, ok = f.files[filepath.ToSlash(filepath.Join(f.Cwd, filename))]
+	}
+	if !ok {
+		return []byte(nil), os.ErrNotExist
+	}
+
+	f.mu.Lock()
+	f.fileReaderCalls++
+	f.successfulReads = append(f.successfulReads, filename)
+	f.mu.Unlock()
+
+	return []byte(str), nil
+}
+
+func (f *TestFs) SuccessfulReads() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	// Return a copy to avoid race conditions with callers
+	result := make([]string, len(f.successfulReads))
+	copy(result, f.successfulReads)
+	return result
+}
+
+func (f *TestFs) FileReaderCalls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fileReaderCalls
+}
+
+func (f *TestFs) Glob(relPattern string) ([]string, error) {
+	var pattern string
+	if strings.HasPrefix(relPattern, "/") {
+		pattern = relPattern
+	} else {
+		pattern = filepath.ToSlash(filepath.Join(f.Cwd, relPattern))
+	}
+
+	fixtures, ok := f.GlobFixtures[pattern]
+	if ok {
+		return fixtures, nil
+	}
+
+	matches := []string{}
+	for name := range f.files {
+		matched, err := filepath.Match(pattern, name)
+		if err != nil {
+			return nil, err
+		}
+		if matched {
+			matches = append(matches, name)
+		}
+	}
+	return matches, nil
+}
+
+func (f *TestFs) Abs(path string) (string, error) {
+	path = filepath.ToSlash(path)
+	var p string
+	if strings.HasPrefix(path, "/") {
+		p = path
+	} else {
+		p = filepath.Join(f.Cwd, path)
+	}
+	return filepath.ToSlash(filepath.Clean(p)), nil
+}
+
+func (f *TestFs) Getwd() (string, error) {
+	return f.Cwd, nil
+}
+
+func (f *TestFs) Chdir(dir string) error {
+	if _, ok := f.dirs[dir]; ok {
+		f.Cwd = dir
+		return nil
+	}
+	return fmt.Errorf("unexpected chdir \"%s\"", dir)
+}
+
+// SyncWriter wraps an io.Writer to make it safe for concurrent use.
+type SyncWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+// NewSyncWriter creates a new thread-safe writer.
+func NewSyncWriter(w io.Writer) *SyncWriter {
+	return &SyncWriter{w: w}
+}
+
+// Write implements io.Writer in a thread-safe manner.
+func (sw *SyncWriter) Write(p []byte) (n int, err error) {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	return sw.w.Write(p)
+}

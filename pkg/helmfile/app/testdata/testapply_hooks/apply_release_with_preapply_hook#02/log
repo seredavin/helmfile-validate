@@ -1,0 +1,8 @@
+
+hook[presync] logs | foo
+hook[presync] logs | 
+
+UPDATED RELEASES:
+NAME   NAMESPACE   CHART           VERSION   DURATION
+foo    default     incubator/raw                   0s
+

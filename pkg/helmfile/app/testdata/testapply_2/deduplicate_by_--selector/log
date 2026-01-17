@@ -1,0 +1,24 @@
+processing file "helmfile.yaml" in directory "."
+changing working directory to "/path/to"
+merged environment: &{default  map[] map[]}
+1 release(s) matching index=1 found in helmfile.yaml
+
+Affected releases are:
+  foo (incubator/raw) UPDATED
+
+invoking preapply hooks for 1 groups of releases in this order:
+GROUP RELEASES
+1     default/default/foo
+
+invoking preapply hooks for releases in group 1/1: default/default/foo
+processing 1 groups of releases in this order:
+GROUP RELEASES
+1     default/default/foo
+
+processing releases in group 1/1: default/default/foo
+
+UPDATED RELEASES:
+NAME   NAMESPACE   CHART           VERSION   DURATION
+foo    default     incubator/raw   3.1.0           0s
+
+changing working directory back to "/path/to"
