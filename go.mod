@@ -23,5 +23,7 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 )
+
+replace golang.org/x/crypto => golang.org/x/crypto v0.35.0
