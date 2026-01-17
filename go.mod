@@ -334,3 +334,5 @@ require (
 replace golang.org/x/crypto => golang.org/x/crypto v0.35.0
 
 replace github.com/1password/onepassword-sdk-go => ./vendor-stubs/github.com/1password/onepassword-sdk-go
+
+replace github.com/ulikunitz/xz => ./vendor-stubs/github.com/ulikunitz/xz
