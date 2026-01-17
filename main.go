@@ -485,22 +485,41 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 	emptyEnv := environment.New("")
 	baseDir := filepath.Dir(mainFile)
 
-	// Render template if main file is .gotmpl
+	// Read the main file
 	fileBytes, err := trackingFs.ReadFile(mainFile)
 	if err != nil {
 		return result
 	}
 
-	// Parse the file first to get bases before full load
-	// This allows us to track base files explicitly
+	// Render template if main file is .gotmpl OR contains template syntax
+	// This supports old Helmfile behavior where templates could be used in regular YAML files
 	var parsedState *state.HelmState
-	if strings.HasSuffix(mainFile, ".gotmpl") {
-		renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, emptyEnv.Values)
-		renderedBytes, err := renderer.RenderToBytes(mainFile)
-		if err != nil {
-			// If rendering fails, still try to parse
-		} else {
-			fileBytes = renderedBytes
+	fileContent := string(fileBytes)
+	hasTemplateSyntax := containsTemplateSyntax(fileContent)
+
+	if strings.HasSuffix(mainFile, ".gotmpl") || hasTemplateSyntax {
+		// Create renderer with empty values for initial parsing
+		// For templates with exec/readFile, we use preRender mode to avoid executing them
+		renderer := tmpl.NewFirstPassRenderer(baseDir, emptyEnv.Values)
+
+		if strings.HasSuffix(mainFile, ".gotmpl") {
+			// For .gotmpl files, use RenderToBytes which handles the extension
+			renderedBytes, err := renderer.RenderToBytes(mainFile)
+			if err != nil {
+				// If rendering fails, still try to parse original content
+				// This allows partial template errors to not break everything
+			} else {
+				fileBytes = renderedBytes
+			}
+		} else if hasTemplateSyntax {
+			// For regular YAML files with templates, render the content directly
+			renderedBuf, err := renderer.RenderTemplateContentToBuffer(fileBytes)
+			if err != nil {
+				// If rendering fails, still try to parse original content
+				// This allows partial template errors to not break everything
+			} else {
+				fileBytes = renderedBuf.Bytes()
+			}
 		}
 	}
 
@@ -677,62 +696,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			}
 		}
 
-		// Extract hooks from state
-		// Hooks can be at the state level (state.Hooks) or at the release level (release.Hooks)
-		relMainFile, err := filepath.Rel(absPath, mainFile)
-		if err != nil {
-			relMainFile = mainFile
-		}
-
-		// Extract state-level hooks
-		for _, hook := range state.Hooks {
-			hookUsage := &HookUsage{
-				File:    relMainFile,
-				Events:  hook.Events,
-				Command: hook.Command,
-			}
-			result.Hooks = append(result.Hooks, hookUsage)
-		}
-
-		// Extract release-level hooks
-		for _, release := range state.Releases {
-			for _, hook := range release.Hooks {
-				hookUsage := &HookUsage{
-					File:    relMainFile,
-					Release: release.Name,
-					Events:  hook.Events,
-					Command: hook.Command,
-				}
-				result.Hooks = append(result.Hooks, hookUsage)
-			}
-		}
-	} else if parsedState != nil {
-		// If state loading failed but we have parsed state, extract hooks from it
-		relMainFile, _ := filepath.Rel(absPath, mainFile)
-		if relMainFile == "" {
-			relMainFile = mainFile
-		}
-		// Extract state-level hooks
-		for _, hook := range parsedState.Hooks {
-			hookUsage := &HookUsage{
-				File:    relMainFile,
-				Events:  hook.Events,
-				Command: hook.Command,
-			}
-			result.Hooks = append(result.Hooks, hookUsage)
-		}
-		// Extract release-level hooks
-		for _, release := range parsedState.Releases {
-			for _, hook := range release.Hooks {
-				hookUsage := &HookUsage{
-					File:    relMainFile,
-					Release: release.Name,
-					Events:  hook.Events,
-					Command: hook.Command,
-				}
-				result.Hooks = append(result.Hooks, hookUsage)
-			}
-		}
+		// Hooks are already extracted above from stateForHooks, no need to extract again
 	}
 
 	// Get all files that were read/globbed

@@ -2052,16 +2052,12 @@ echo "test"
 	}
 
 	// Check that hooks are detected
-	// Note: Hooks might not be detected if state loading fails or hooks are not properly extracted
+	// With template support in regular YAML files, hooks should now be detected
 	if len(result.Hooks) == 0 {
-		t.Logf("No hooks detected - this might be expected if state loading fails")
+		t.Error("Hooks should be detected from release in helmfile.yaml")
 		t.Logf("Files scanned: %v", result.FilesScanned)
 		t.Logf("Helmfile functions: %d", len(result.HelmfileFunctions))
 		t.Logf("Sprig functions: %d", len(result.SprigFunctions))
-		// Don't fail the test immediately - check if functions are detected instead
-		if !execFound {
-			t.Error("exec function should be detected")
-		}
 	} else {
 		t.Logf("Found %d hooks", len(result.Hooks))
 		for _, hook := range result.Hooks {
@@ -2070,42 +2066,43 @@ echo "test"
 		}
 	}
 
-	// Verify hook details (only if hooks were detected)
-	if len(result.Hooks) > 0 {
-		hookFound := false
-		for _, hook := range result.Hooks {
-			if hook.Release == "example-configmap" || strings.Contains(hook.File, "helmfile.yaml") {
-				hookFound = true
-				// Check that it has presync event
-				hasPresync := false
-				for _, event := range hook.Events {
-					// Handle case where events might be space-separated in a single string
-					eventParts := strings.Fields(event)
-					for _, part := range eventParts {
-						if part == "presync" {
-							hasPresync = true
-							break
-						}
-					}
-					if hasPresync {
+	// Verify hook details
+	if len(result.Hooks) == 0 {
+		t.Error("Hooks should be detected")
+		return
+	}
+
+	hookFound := false
+	for _, hook := range result.Hooks {
+		if hook.Release == "example-configmap" || strings.Contains(hook.File, "helmfile.yaml") {
+			hookFound = true
+			// Check that it has presync event
+			hasPresync := false
+			for _, event := range hook.Events {
+				// Handle case where events might be space-separated in a single string
+				eventParts := strings.Fields(event)
+				for _, part := range eventParts {
+					if part == "presync" {
+						hasPresync = true
 						break
 					}
 				}
-				if !hasPresync {
-					t.Errorf("Hook should have presync event, got: %v", hook.Events)
+				if hasPresync {
+					break
 				}
-				// Check command
-				if hook.Command != "ls" {
-					t.Errorf("Hook command should be 'ls', got: %s", hook.Command)
-				}
-				break
 			}
+			if !hasPresync {
+				t.Errorf("Hook should have presync event, got: %v", hook.Events)
+			}
+			// Check command
+			if hook.Command != "ls" {
+				t.Errorf("Hook command should be 'ls', got: %s", hook.Command)
+			}
+			break
 		}
-		if !hookFound {
-			t.Logf("Hook from release not found in detected hooks, but hooks were detected")
-		}
-	} else {
-		t.Logf("Skipping hook details verification - no hooks detected")
+	}
+	if !hookFound {
+		t.Error("Hook from release should be found")
 	}
 
 	// Test 2: Run with -exec flag - should show only exec functions
@@ -2137,10 +2134,7 @@ echo "test"
 			t.Errorf("Command failed with unexpected error: %v, output: %s", err, outputStr)
 		}
 	} else {
-		// Command succeeded - hooks may not be detected
-		// This is acceptable if hooks detection is not fully implemented
-		t.Logf("Note: Command succeeded - hooks may not be detected in this scenario")
+		t.Error("Command should fail when hooks are detected and -no-hooks flag is used")
 		t.Logf("Output: %s", outputStr)
-		// Don't fail the test - this is a known limitation
 	}
 }
