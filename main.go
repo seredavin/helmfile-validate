@@ -491,6 +491,9 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		return result
 	}
 
+	// Parse the file first to get bases before full load
+	// This allows us to track base files explicitly
+	var parsedState *state.HelmState
 	if strings.HasSuffix(mainFile, ".gotmpl") {
 		renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, emptyEnv.Values)
 		renderedBytes, err := renderer.RenderToBytes(mainFile)
@@ -498,6 +501,26 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			// If rendering fails, still try to parse
 		} else {
 			fileBytes = renderedBytes
+		}
+	}
+
+	// Parse to get bases list before full load
+	parsedState, err = creator.Parse(fileBytes, baseDir, mainFile)
+	if err == nil && parsedState != nil {
+		// Track base files explicitly before they're loaded
+		for _, basePath := range parsedState.Bases {
+			resolvedBasePath := resolvePath(baseDir, basePath)
+			// Read the base file to ensure it's tracked
+			_, _ = trackingFs.ReadFile(resolvedBasePath)
+			// If it's a .gotmpl file, also try to render it to track template usage
+			if strings.HasSuffix(resolvedBasePath, ".gotmpl") {
+				templateData := emptyEnv.Values
+				if templateData == nil {
+					templateData = make(map[string]any)
+				}
+				renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
+				_, _ = renderer.RenderToBytes(resolvedBasePath)
+			}
 		}
 	}
 
@@ -509,6 +532,23 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			fmt.Fprintf(os.Stderr, "Warning: error loading helmfile state: %v\n", err)
 		}
 	} else if state != nil {
+		// Explicitly track base files that were loaded
+		// Bases are loaded via LoadFile which should track them, but let's also explicitly read them
+		// to ensure they're tracked even if LoadFile doesn't fully process them
+		for _, basePath := range state.Bases {
+			resolvedBasePath := resolvePath(baseDir, basePath)
+			// Read the base file to ensure it's tracked
+			_, _ = trackingFs.ReadFile(resolvedBasePath)
+			// If it's a .gotmpl file, also try to render it to track template usage
+			if strings.HasSuffix(resolvedBasePath, ".gotmpl") {
+				templateData := state.RenderedValues
+				if templateData == nil {
+					templateData = make(map[string]any)
+				}
+				renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
+				_, _ = renderer.RenderToBytes(resolvedBasePath)
+			}
+		}
 		// Process helmfiles field to load nested helmfile files
 		// For template helmfiles (like build.gotmpl with readDir), we need to manually
 		// extract the pattern and find files, since full rendering requires values that may not be available
