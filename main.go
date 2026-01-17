@@ -634,6 +634,36 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 				}
 			}
 		}
+
+		// Extract hooks from state
+		// Hooks can be at the state level (state.Hooks) or at the release level (release.Hooks)
+		relMainFile, err := filepath.Rel(absPath, mainFile)
+		if err != nil {
+			relMainFile = mainFile
+		}
+
+		// Extract state-level hooks
+		for _, hook := range state.Hooks {
+			hookUsage := &HookUsage{
+				File:    relMainFile,
+				Events:  hook.Events,
+				Command: hook.Command,
+			}
+			result.Hooks = append(result.Hooks, hookUsage)
+		}
+
+		// Extract release-level hooks
+		for _, release := range state.Releases {
+			for _, hook := range release.Hooks {
+				hookUsage := &HookUsage{
+					File:    relMainFile,
+					Release: release.Name,
+					Events:  hook.Events,
+					Command: hook.Command,
+				}
+				result.Hooks = append(result.Hooks, hookUsage)
+			}
+		}
 	}
 
 	// Get all files that were read/globbed
