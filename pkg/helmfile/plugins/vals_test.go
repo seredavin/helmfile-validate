@@ -3,6 +3,7 @@ package plugins
 import (
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -96,7 +97,12 @@ func TestAWSSDKLogLevelConfiguration(t *testing.T) {
 			opts := vals.Options{
 				CacheSize: valsCacheSize,
 			}
-			opts.AWSLogLevel = logLevel
+			// Set AWS SDK log level using reflection (if field exists)
+			// This field was added in vals v0.43.0, so we use reflection for compatibility
+			optsValue := reflect.ValueOf(&opts).Elem()
+			if awsLogLevelField := optsValue.FieldByName("AWSLogLevel"); awsLogLevelField.IsValid() && awsLogLevelField.CanSet() {
+				awsLogLevelField.SetString(logLevel)
+			}
 
 			// Verify LogOutput is set to io.Discard only when level is "off"
 			if tt.expectedLogOutput {
