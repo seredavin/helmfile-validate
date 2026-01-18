@@ -68,15 +68,18 @@ type OutputResult struct {
 }
 
 var (
-	jsonOutput    bool
-	showExecOnly  bool
-	showUnknown   bool
-	showInsecure  bool
+	version      = "dev"
+	commit       = "unknown"
+	buildDate    = "unknown"
+	jsonOutput   bool
+	showExecOnly bool
+	showUnknown  bool
+	showInsecure bool
 	listFunctions bool
-	blacklist     string
-	whitelist     string
-	noColor       bool
-	noHooks       bool
+	blacklist    string
+	whitelist    string
+	noColor      bool
+	noHooks      bool
 )
 
 func init() {
@@ -92,14 +95,21 @@ func init() {
 }
 
 func main() {
+	// Add version flag
+	showVersion := flag.Bool("version", false, "Show version information and exit")
+	
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `helmfile-validate - Scan helmfile templates for function usage
+
+Version: %s
+Commit: %s
+Build Date: %s
 
 Usage:
   helmfile-validate [options] [directory]
 
 Options:
-`)
+`, version, commit, buildDate)
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, `
 Examples:
@@ -128,6 +138,14 @@ Validation modes:
 	}
 
 	flag.Parse()
+
+	// Show version and exit
+	if *showVersion {
+		fmt.Printf("helmfile-validate version %s\n", version)
+		fmt.Printf("Commit: %s\n", commit)
+		fmt.Printf("Build Date: %s\n", buildDate)
+		os.Exit(0)
+	}
 
 	// Disable colors if requested or if not a terminal
 	if noColor {

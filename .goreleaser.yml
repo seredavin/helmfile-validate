@@ -1,0 +1,76 @@
+project_name: helmfile-validate
+
+builds:
+  - id: helmfile-validate
+    binary: helmfile-validate
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
+archives:
+  - id: default
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+release:
+  mode: replace
+  header: |
+    ## {{ .TagName }}
+    
+    {{ .ReleaseNotes }}
+  
+  footer: |
+    ## Installation
+    
+    Download the appropriate binary for your platform from the assets below.
+    
+    ### Linux
+    ```bash
+    wget https://github.com/{{ .Repo.Owner }}/{{ .Repo.Name }}/releases/download/{{ .Tag }}/helmfile-validate_linux_amd64.tar.gz
+    tar -xzf helmfile-validate_linux_amd64.tar.gz
+    sudo mv helmfile-validate /usr/local/bin/
+    ```
+    
+    ### macOS
+    ```bash
+    wget https://github.com/{{ .Repo.Owner }}/{{ .Repo.Name }}/releases/download/{{ .Tag }}/helmfile-validate_darwin_amd64.tar.gz
+    tar -xzf helmfile-validate_darwin_amd64.tar.gz
+    sudo mv helmfile-validate /usr/local/bin/
+    ```
+    
+    ### Windows
+    Download `helmfile-validate_windows_amd64.zip` and extract the binary.
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+blobs:
+  - provider: github
+    ids:
+      - default
