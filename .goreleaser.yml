@@ -40,9 +40,6 @@ changelog:
 
 release:
   mode: replace
-  header: |
-    {{ .ReleaseNotes }}
-  
   footer: |
     ## Installation
     
