@@ -50,14 +50,14 @@ release:
     
     ### Linux
     ```bash
-    wget https://github.com/{{ .Repo.Owner }}/{{ .Repo.Name }}/releases/download/{{ .Tag }}/helmfile-validate_linux_amd64.tar.gz
+    wget https://github.com/seredavin/helmfile-validate/releases/download/{{ .Tag }}/helmfile-validate_linux_amd64.tar.gz
     tar -xzf helmfile-validate_linux_amd64.tar.gz
     sudo mv helmfile-validate /usr/local/bin/
     ```
     
     ### macOS
     ```bash
-    wget https://github.com/{{ .Repo.Owner }}/{{ .Repo.Name }}/releases/download/{{ .Tag }}/helmfile-validate_darwin_amd64.tar.gz
+    wget https://github.com/seredavin/helmfile-validate/releases/download/{{ .Tag }}/helmfile-validate_darwin_amd64.tar.gz
     tar -xzf helmfile-validate_darwin_amd64.tar.gz
     sudo mv helmfile-validate /usr/local/bin/
     ```
