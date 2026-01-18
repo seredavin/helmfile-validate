@@ -1,0 +1,53 @@
+version: 2
+updates:
+  # Enable version updates for Go
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "seredavin"
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+    ignore:
+      # Ignore major version updates for Helm to avoid breaking changes
+      - dependency-name: "helm.sh/helm/v3"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "helm.sh/helm/v4"
+        update-types: ["version-update:semver-major"]
+      # Ignore major version updates for Kubernetes client libraries
+      - dependency-name: "k8s.io/*"
+        update-types: ["version-update:semver-major"]
+      # Ignore major version updates for Helmfile dependencies
+      - dependency-name: "github.com/helmfile/*"
+        update-types: ["version-update:semver-major"]
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "seredavin"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
