@@ -138,11 +138,11 @@ type HelmState struct {
 
 // SubHelmfileSpec defines the subhelmfile path and options
 type SubHelmfileSpec struct {
-	//path or glob pattern for the sub helmfiles
+	// path or glob pattern for the sub helmfiles
 	Path string `yaml:"path,omitempty"`
-	//chosen selectors for the sub helmfiles
+	// chosen selectors for the sub helmfiles
 	Selectors []string `yaml:"selectors,omitempty"`
-	//do the sub helmfiles inherits from parent selectors
+	// do the sub helmfiles inherits from parent selectors
 	SelectorsInherited bool `yaml:"selectorsInherited,omitempty"`
 
 	Environment SubhelmfileEnvironmentSpec
@@ -170,7 +170,7 @@ type HelmSpec struct {
 	// Wait, if set to true, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful
 	Wait bool `yaml:"wait"`
 	// WaitRetries, if set and --wait enabled, will retry any failed check on resource state, except if HTTP status code < 500 is received, subject to the specified number of retries
-	// DEPRECATED: This field is ignored as the --wait-retries flag was removed from Helm. Preserved for backward compatibility.
+	// Deprecated: This field is ignored as the --wait-retries flag was removed from Helm. Preserved for backward compatibility.
 	WaitRetries int `yaml:"waitRetries"`
 	// WaitForJobs, if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout
 	WaitForJobs bool `yaml:"waitForJobs"`
@@ -277,7 +277,7 @@ type ReleaseSpec struct {
 	// Wait, if set to true, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment are in a ready state before marking the release as successful
 	Wait *bool `yaml:"wait,omitempty"`
 	// WaitRetries, if set and --wait enabled, will retry any failed check on resource state, except if HTTP status code < 500 is received, subject to the specified number of retries
-	// DEPRECATED: This field is ignored as the --wait-retries flag was removed from Helm. Preserved for backward compatibility.
+	// Deprecated: This field is ignored as the --wait-retries flag was removed from Helm. Preserved for backward compatibility.
 	WaitRetries *int `yaml:"waitRetries,omitempty"`
 	// WaitForJobs, if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout
 	WaitForJobs *bool `yaml:"waitForJobs,omitempty"`
@@ -383,7 +383,7 @@ type ReleaseSpec struct {
 	Transformers []any    `yaml:"transformers,omitempty"`
 	Adopt        []string `yaml:"adopt,omitempty"`
 
-	//version of the chart that has really been installed cause desired version may be fuzzy (~2.0.0)
+	// version of the chart that has really been installed cause desired version may be fuzzy (~2.0.0)
 	installedVersion string
 
 	// ForceGoGetter forces the use of go-getter for fetching remote directory as maniefsts/chart/kustomization
@@ -511,7 +511,7 @@ var DefaultFetchOutputDirTemplate = filepath.Join(
 	"{{ .Release.KubeContext }}{{ end }}",
 	"{{ .Release.Name }}",
 	"{{ .ChartName }}",
-	"{{ or .Release.Version \"latest\" }}",
+	"{{ or .Release.Version \"latest\" }}", //nolint:gocritic // filepathJoin - this is a template string, not a file path
 )
 
 func (st *HelmState) reformat(spec *ReleaseSpec) []string {
@@ -629,7 +629,7 @@ func (st *HelmState) SyncRepos(helm RepoUpdater, shouldSkip map[string]bool) ([]
 	return updated, nil
 }
 
-func gatherUsernamePassword(repoName string, username string, password string) (string, string) {
+func gatherUsernamePassword(repoName, username, password string) (string, string) {
 	var user, pass string
 
 	replacedRepoName := strings.ToUpper(strings.ReplaceAll(repoName, "-", "_"))
@@ -966,13 +966,16 @@ func (st *HelmState) DeleteReleasesForSync(affectedReleases *AffectedReleases, h
 					m.Lock()
 					start := time.Now()
 					if _, err := st.triggerReleaseEvent("preuninstall", nil, release, "sync"); err != nil {
-						affectedReleases.DeleteFailed = append(affectedReleases.Failed, release)
+						affectedReleases.Failed = append(affectedReleases.Failed, release)
+						affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, release)
 						relErr = newReleaseFailedError(release, err)
 					} else if err := helm.DeleteRelease(context, release.Name, deletionFlags...); err != nil {
-						affectedReleases.DeleteFailed = append(affectedReleases.Failed, release)
+						affectedReleases.Failed = append(affectedReleases.Failed, release)
+						affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, release)
 						relErr = newReleaseFailedError(release, err)
 					} else if _, err := st.triggerReleaseEvent("postuninstall", nil, release, "sync"); err != nil {
-						affectedReleases.DeleteFailed = append(affectedReleases.Failed, release)
+						affectedReleases.Failed = append(affectedReleases.Failed, release)
+						affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, release)
 						relErr = newReleaseFailedError(release, err)
 					} else {
 						affectedReleases.Deleted = append(affectedReleases.Deleted, release)
@@ -1225,16 +1228,15 @@ func (st *HelmState) listReleases(context helmexec.HelmContext, helm helmexec.In
 	if release.Namespace != "" {
 		flags = append(flags, "--namespace", release.Namespace)
 	}
-	flags = append(flags, "--uninstalling")
-	flags = append(flags, "--deployed", "--failed", "--pending")
+	flags = append(flags, "--uninstalling", "--deployed", "--failed", "--pending")
 	return helm.List(context, "^"+release.Name+"$", flags...)
 }
 
 func (st *HelmState) getDeployedVersion(context helmexec.HelmContext, helm helmexec.Interface, release *ReleaseSpec) (string, error) {
-	//retrieve the version
+	// retrieve the version
 	if out, err := st.listReleases(context, helm, release); err == nil {
 		chartName := filepath.Base(release.Chart)
-		//the regexp without escapes : .*\s.*\s.*\s.*\schartName-(.*?)\s
+		// the regexp without escapes : .*\s.*\s.*\s.*\schartName-(.*?)\s
 		pat := regexp.MustCompile(".*\\s.*\\s.*\\s.*\\s" + chartName + "-(.*?)\\s")
 		versions := pat.FindStringSubmatch(out)
 		if len(versions) > 0 {
@@ -1922,9 +1924,19 @@ func (st *HelmState) TemplateReleases(helm helmexec.Interface, outputDir string,
 
 		flags, files, err := st.flagsForTemplate(helm, release, 0, opts)
 
-		if !opts.SkipCleanup {
-			defer st.removeFiles(files)
+		if err != nil {
+			if !opts.SkipCleanup {
+				st.removeFiles(files)
+			}
+			errs = append(errs, err)
+			continue
 		}
+
+		func() {
+			if !opts.SkipCleanup {
+				defer st.removeFiles(files)
+			}
+		}()
 
 		if err != nil {
 			errs = append(errs, err)
@@ -1948,7 +1960,7 @@ func (st *HelmState) TemplateReleases(helm helmexec.Interface, outputDir string,
 			}
 		}
 
-		if len(outputDir) > 0 || len(opts.OutputDirTemplate) > 0 {
+		if outputDir != "" || opts.OutputDirTemplate != "" {
 			releaseOutputDir, err := st.GenerateOutputDir(outputDir, release, opts.OutputDirTemplate)
 			if err != nil {
 				errs = append(errs, err)
@@ -2029,9 +2041,11 @@ func (st *HelmState) WriteReleasesValues(helm helmexec.Interface, additionalValu
 			return []error{err}
 		}
 
-		if !opts.SkipCleanup {
-			defer st.removeFiles(generatedFiles)
-		}
+		func() {
+			if !opts.SkipCleanup {
+				defer st.removeFiles(generatedFiles)
+			}
+		}()
 
 		for _, value := range additionalValues {
 			valfile, err := filepath.Abs(value)
@@ -2129,13 +2143,19 @@ func (st *HelmState) LintReleases(helm helmexec.Interface, additionalValues []st
 
 		flags, files, err := st.flagsForLint(helm, &release, 0)
 
-		if !opts.SkipCleanup {
-			defer st.removeFiles(files)
+		if err != nil {
+			if !opts.SkipCleanup {
+				st.removeFiles(files)
+			}
+			errs = append(errs, err)
+			continue
 		}
 
-		if err != nil {
-			errs = append(errs, err)
-		}
+		func(files []string) {
+			if !opts.SkipCleanup {
+				defer st.removeFiles(files)
+			}
+		}(files)
 		for _, value := range additionalValues {
 			valfile, err := filepath.Abs(value)
 			if err != nil {
@@ -2594,7 +2614,8 @@ func (st *HelmState) DeleteReleases(affectedReleases *AffectedReleases, helm hel
 		if _, err := st.triggerReleaseEvent("preuninstall", nil, &release, "delete"); err != nil {
 			release.duration = time.Since(start)
 
-			affectedReleases.DeleteFailed = append(affectedReleases.Failed, &release)
+			affectedReleases.Failed = append(affectedReleases.Failed, &release)
+		affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, &release)
 
 			return err
 		}
@@ -2602,14 +2623,16 @@ func (st *HelmState) DeleteReleases(affectedReleases *AffectedReleases, helm hel
 		if err := helm.DeleteRelease(context, release.Name, flags...); err != nil {
 			release.duration = time.Since(start)
 
-			affectedReleases.DeleteFailed = append(affectedReleases.Failed, &release)
+			affectedReleases.Failed = append(affectedReleases.Failed, &release)
+			affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, &release)
 			return err
 		}
 
 		if _, err := st.triggerReleaseEvent("postuninstall", nil, &release, "delete"); err != nil {
 			release.duration = time.Since(start)
 
-			affectedReleases.DeleteFailed = append(affectedReleases.Failed, &release)
+			affectedReleases.Failed = append(affectedReleases.Failed, &release)
+			affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, &release)
 			return err
 		}
 		release.duration = time.Since(start)
@@ -2761,7 +2784,7 @@ func markExcludedReleases(releases []ReleaseSpec, selectors []string, values map
 // If the condition is specified but the corresponding value is not found in the values map,
 // it returns an error.
 func ConditionEnabled(r ReleaseSpec, values map[string]any) (bool, error) {
-	if len(r.Condition) == 0 {
+	if r.Condition == "" {
 		return true, nil
 	}
 	iValues := values
@@ -3407,16 +3430,18 @@ func (st *HelmState) flagsForDiff(helm helmexec.Interface, release *ReleaseSpec,
 	}
 
 	for _, flag := range flags {
-		if flag == "--insecure-skip-tls-verify" {
-			diffVersion, err := helmexec.GetPluginVersion("diff", pluginsDir)
-			if err != nil {
-				return nil, nil, err
-			}
-			dv, _ := semver.NewVersion("v3.8.1")
+		if flag != "--insecure-skip-tls-verify" {
+			continue
+		}
+		diffVersion, err := helmexec.GetPluginVersion("diff", pluginsDir)
+		if err != nil {
+			return nil, nil, err
+		}
+		dv, _ := semver.NewVersion("v3.8.1")
 
-			if diffVersion.LessThan(dv) {
-				return nil, nil, fmt.Errorf("insecureSkipTLSVerify is not supported by helm-diff plugin version %s, please use at least v3.8.1", diffVersion)
-			}
+		if diffVersion.LessThan(dv) {
+			return nil, nil, fmt.Errorf("insecureSkipTLSVerify is not supported by helm-diff plugin version %s, please use at least v3.8.1", diffVersion)
+		}
 
 			break
 		}
@@ -3805,9 +3830,15 @@ func (st *HelmState) generateTemporaryReleaseValuesFiles(release *ReleaseSpec, v
 			if err != nil {
 				return generatedFiles, err
 			}
-			defer func() {
-				_ = valfile.Close()
-			}()
+
+			func(f *os.File) {
+				defer func() {
+					_ = f.Close()
+				}()
+				if _, err := f.Write(yamlBytes); err != nil {
+					return
+				}
+			}(valfile)
 
 			if _, err := valfile.Write(yamlBytes); err != nil {
 				return generatedFiles, fmt.Errorf("failed to write %s: %v", valfile.Name(), err)
@@ -3821,18 +3852,28 @@ func (st *HelmState) generateTemporaryReleaseValuesFiles(release *ReleaseSpec, v
 			if err != nil {
 				return generatedFiles, err
 			}
-			defer func() {
-				_ = valfile.Close()
-			}()
+
+			func(f *os.File) {
+				defer func() {
+					_ = f.Close()
+				}()
+				encoder := yaml.NewEncoder(f)
+				defer func() {
+					_ = encoder.Close()
+				}()
+				if err := encoder.Encode(typedValue); err != nil {
+					return
+				}
+			}(valfile)
 
 			encoder := yaml.NewEncoder(valfile)
-			defer func() {
-				_ = encoder.Close()
-			}()
-
 			if err := encoder.Encode(typedValue); err != nil {
+				_ = valfile.Close()
+				_ = encoder.Close()
 				return generatedFiles, err
 			}
+			_ = encoder.Close()
+			_ = valfile.Close()
 
 			generatedFiles = append(generatedFiles, valfile.Name())
 		default:
@@ -3899,11 +3940,15 @@ func (st *HelmState) generateSecretValuesFiles(helm helmexec.Interface, release 
 				return nil, err
 			}
 			_ = path.Close()
-			defer func() {
-				_ = os.Remove(path.Name())
-			}()
+
+			func(p *os.File) {
+				defer func() {
+					_ = os.Remove(p.Name())
+				}()
+			}(path)
 
 			if err := os.WriteFile(path.Name(), bs, 0644); err != nil {
+				_ = os.Remove(path.Name())
 				return nil, err
 			}
 
@@ -3923,9 +3968,12 @@ func (st *HelmState) generateSecretValuesFiles(helm helmexec.Interface, release 
 		if err != nil {
 			return nil, err
 		}
-		defer func() {
-			_ = os.Remove(valfile)
-		}()
+
+		func(v string) {
+			defer func() {
+				_ = os.Remove(v)
+			}()
+		}(valfile)
 
 		generatedDecryptedFiles = append(generatedDecryptedFiles, valfile)
 	}
@@ -3949,9 +3997,9 @@ func (st *HelmState) generateValuesFiles(helm helmexec.Interface, release *Relea
 		return nil, err
 	}
 
-	files := append(valuesFiles, secretValuesFiles...)
+	valuesFiles = append(valuesFiles, secretValuesFiles...)
 
-	return files, nil
+	return valuesFiles, nil
 }
 
 func (st *HelmState) namespaceAndValuesFlags(helm helmexec.Interface, release *ReleaseSpec, workerIndex int) ([]string, []string, error) {
