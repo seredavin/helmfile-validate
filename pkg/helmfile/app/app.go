@@ -1207,7 +1207,7 @@ func printDAG(batches [][]state.Release) string {
 	return trimTrailingWhitespace(buf.String())
 }
 
-// nolint: unparam
+//nolint:unparam
 func withDAG(templated *state.HelmState, helm helmexec.Interface, logger *zap.SugaredLogger, opts state.PlanOptions, converge func(*state.HelmState, helmexec.Interface) (bool, []error)) (bool, []error) {
 	batches, err := templated.PlanReleases(opts)
 	if err != nil {

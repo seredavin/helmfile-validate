@@ -2362,7 +2362,7 @@ func TestHelmState_UpdateDeps(t *testing.T) {
 		if err != nil {
 			return "", err
 		}
-		// nolint: unparam
+		//nolint:unparam
 		helm.UpdateDepsCallbacks[generatedDir] = func(chart string) error {
 			content := []byte(`dependencies:
 - name: envoy

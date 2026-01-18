@@ -165,7 +165,7 @@ func TestToYaml_NestedMapInterfaceKey(t *testing.T) {
 		runtime.GoYamlV3 = v
 	})
 
-	// nolint: unconvert
+	//nolint:unconvert
 	vals := Values(map[string]any{
 		"foo": map[any]any{
 			"bar": "BAR",

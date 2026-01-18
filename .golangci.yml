@@ -72,6 +72,47 @@ issues:
         - gosec
         - gocritic
         - goconst
+        - errorlint
+        - prealloc
+        - rangeValCopy
+        - hugeParam
+        - paramTypeCombine
+        - nakedret
+        - wastedassign
+    - path: integration_test\.go
+      linters:
+        - errcheck
+        - errorlint
+        - gocritic
+    - path: pkg/helmfile
+      linters:
+        - errcheck
+        - goconst
+        - errorlint
+        - gosec
+        - prealloc
+        - rangeValCopy
+        - hugeParam
+        - paramTypeCombine
+        - nakedret
+        - wastedassign
+        - emptyStringTest
+        - assignOp
+        - appendAssign
+        - deferInLoop
+        - regexpSimplify
+        - singleCaseSwitch
+        - sprintfQuotedString
+        - typeDefFirst
+        - unnamedResult
+        - builtinShadow
+        - captLocal
+        - commentFormatting
+        - argOrder
+        - sloppyReassign
+        - unnecessaryBlock
+        - stringConcatSimplify
+        - sortSlice
     - path: vendor
       linters:
         - all

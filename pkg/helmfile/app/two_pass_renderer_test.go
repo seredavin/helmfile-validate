@@ -12,7 +12,7 @@ import (
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/yaml"
 )
 
-// nolint: unparam
+//nolint:unparam
 func makeLoader(files map[string]string, env string) (*desiredStateLoader, *testhelper.TestFs, *bytes.Buffer) {
 	testfs := testhelper.NewTestFs(files)
 	logger := newAppTestLogger()

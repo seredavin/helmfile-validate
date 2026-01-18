@@ -1684,7 +1684,7 @@ func (st *HelmState) prepareChartForRelease(release *ReleaseSpec, helm helmexec.
 	chartification, clean, err := st.PrepareChartify(helm, release, chartPath, workerIndex)
 
 	if !opts.SkipCleanup {
-		// nolint: staticcheck
+		//nolint:staticcheck
 		defer clean()
 	}
 
@@ -1844,7 +1844,7 @@ func (st *HelmState) PrepareCharts(helm helmexec.Interface, dir string, concurre
 	return prepareChartInfo, nil
 }
 
-// nolint: unparam
+//nolint:unparam
 func (st *HelmState) runHelmDepBuilds(helm helmexec.Interface, concurrency int, builds []*chartPrepareResult) error {
 	// NOTES:
 	// 1. `helm dep build` fails when it was run concurrency on the same chart.

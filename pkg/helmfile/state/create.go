@@ -337,7 +337,7 @@ func (st *HelmState) getEnvMissingFileHandler(es EnvironmentSpec) *string {
 	}
 }
 
-// nolint: unparam
+//nolint:unparam
 func (c *StateCreator) loadEnvValues(st *HelmState, name string, failOnMissingEnv bool, ctxEnv, overrode *environment.Environment) (*environment.Environment, error) {
 	secretVals := map[string]any{}
 	valuesVals := map[string]any{}
@@ -472,7 +472,7 @@ func (c *StateCreator) scatterGatherEnvSecretFiles(st *HelmState, envSecretFiles
 						decryptedFilesKeeper = append(decryptedFilesKeeper, decFile)
 					}
 				}
-				// nolint: staticcheck
+				//nolint:staticcheck
 				defer func() {
 					if !slices.Contains(decryptedFilesKeeper, decFile) {
 						if err := c.fs.DeleteFile(decFile); err != nil {

@@ -67,19 +67,26 @@ type OutputResult struct {
 	Validation *ValidationResult `json:"validation,omitempty"`
 }
 
+const (
+	funcCategorySprig       = "sprig"
+	funcCategoryHelmfile    = "helmfile"
+	validationModeBlacklist = "blacklist"
+	validationModeNoHooks   = "no-hooks"
+)
+
 var (
-	version      = "dev"
-	commit       = "unknown"
-	buildDate    = "unknown"
-	jsonOutput   bool
-	showExecOnly bool
-	showUnknown  bool
-	showInsecure bool
+	version       = "dev"
+	commit        = "unknown"
+	buildDate     = "unknown"
+	jsonOutput    bool
+	showExecOnly  bool
+	showUnknown   bool
+	showInsecure  bool
 	listFunctions bool
-	blacklist    string
-	whitelist    string
-	noColor      bool
-	noHooks      bool
+	blacklist     string
+	whitelist     string
+	noColor       bool
+	noHooks       bool
 )
 
 func init() {
@@ -97,7 +104,7 @@ func init() {
 func main() {
 	// Add version flag
 	showVersion := flag.Bool("version", false, "Show version information and exit")
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `helmfile-validate - Scan helmfile templates for function usage
 
@@ -201,16 +208,14 @@ Validation modes:
 		hookValidation := validateHooks(result)
 		if validation == nil {
 			validation = hookValidation
-		} else {
+		} else if !hookValidation.Valid {
 			// Merge hook validation into existing validation
-			if !hookValidation.Valid {
-				validation.Valid = false
-				validation.HookViolations = hookValidation.HookViolations
-				if validation.Mode != "" {
-					validation.Mode = validation.Mode + "+no-hooks"
-				} else {
-					validation.Mode = "no-hooks"
-				}
+			validation.Valid = false
+			validation.HookViolations = hookValidation.HookViolations
+			if validation.Mode != "" {
+				validation.Mode += "+no-hooks"
+			} else {
+				validation.Mode = validationModeNoHooks
 			}
 		}
 	}
@@ -265,7 +270,7 @@ func validateFunctions(result *ScanResult, blacklistStr, whitelistStr string) *V
 
 	if blacklistStr != "" {
 		// Blacklist mode: fail if any blacklisted function is found
-		validation.Mode = "blacklist"
+		validation.Mode = validationModeBlacklist
 		validation.Rules = parseList(blacklistStr)
 		blacklistSet := make(map[string]bool)
 		for _, name := range validation.Rules {
@@ -434,7 +439,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 	// Build known functions map
 	knownFuncs := make(map[string]string) // name -> category
 	for name := range funcMap {
-		knownFuncs[name] = "sprig"
+		knownFuncs[name] = funcCategorySprig
 	}
 
 	// Mark helmfile-specific functions
@@ -444,7 +449,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		"tpl", "required", "fetchSecretValue", "expandSecretRefs", "sprigGet", "include",
 	}
 	for _, name := range helmfileSpecific {
-		knownFuncs[name] = "helmfile"
+		knownFuncs[name] = funcCategoryHelmfile
 	}
 
 	result := &ScanResult{
@@ -472,7 +477,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		return result
 	}
 	defer func() {
-		_ = logger.Sync() // Best effort sync on exit
+		_ = logger.Sync() //nolint:errcheck // Best effort sync on exit
 	}()
 	sugarLogger := logger.Sugar()
 
@@ -576,7 +581,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		for _, basePath := range parsedState.Bases {
 			resolvedBasePath := resolvePath(baseDir, basePath)
 			// Read the base file to ensure it's tracked
-			_, _ = trackingFs.ReadFile(resolvedBasePath)
+			_, _ = trackingFs.ReadFile(resolvedBasePath) //nolint:errcheck // File tracking, errors are non-critical
 			// If it's a .gotmpl file, also try to render it to track template usage
 			if strings.HasSuffix(resolvedBasePath, ".gotmpl") {
 				templateData := emptyEnv.Values
@@ -584,7 +589,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 					templateData = make(map[string]any)
 				}
 				renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
-				_, _ = renderer.RenderToBytes(resolvedBasePath)
+				_, _ = renderer.RenderToBytes(resolvedBasePath) //nolint:errcheck // Template tracking, errors are non-critical
 			}
 		}
 	}
@@ -599,7 +604,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		// Even if loading fails, try to parse the file to extract hooks
 		// This allows us to detect hooks even if full state loading fails
 		if parsedState == nil {
-			parsedState, _ = creator.Parse(fileBytes, baseDir, mainFile)
+			parsedState, _ = creator.Parse(fileBytes, baseDir, mainFile) //nolint:errcheck // Parsing errors are handled separately
 		}
 	}
 
@@ -611,7 +616,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 	}
 
 	if stateForHooks != nil {
-		relMainFile, _ := filepath.Rel(absPath, mainFile)
+		relMainFile, _ := filepath.Rel(absPath, mainFile) //nolint:errcheck // Path resolution, errors handled by fallback
 		if relMainFile == "" {
 			relMainFile = mainFile
 		}
@@ -625,7 +630,8 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			result.Hooks = append(result.Hooks, hookUsage)
 		}
 		// Extract release-level hooks
-		for _, release := range stateForHooks.Releases {
+		for i := range stateForHooks.Releases {
+			release := &stateForHooks.Releases[i]
 			for _, hook := range release.Hooks {
 				hookUsage := &HookUsage{
 					File:    relMainFile,
@@ -645,7 +651,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		for _, basePath := range state.Bases {
 			resolvedBasePath := resolvePath(baseDir, basePath)
 			// Read the base file to ensure it's tracked
-			_, _ = trackingFs.ReadFile(resolvedBasePath)
+			_, _ = trackingFs.ReadFile(resolvedBasePath) //nolint:errcheck // File tracking, errors are non-critical
 			// If it's a .gotmpl file, also try to render it to track template usage
 			if strings.HasSuffix(resolvedBasePath, ".gotmpl") {
 				templateData := state.RenderedValues
@@ -653,7 +659,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 					templateData = make(map[string]any)
 				}
 				renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
-				_, _ = renderer.RenderToBytes(resolvedBasePath)
+				_, _ = renderer.RenderToBytes(resolvedBasePath) //nolint:errcheck // Template tracking, errors are non-critical
 			}
 		}
 		// Process helmfiles field to load nested helmfile files
@@ -682,7 +688,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 									for _, entry := range entries {
 										if !entry.IsDir() {
 											filePath := filepath.Join(dirPath, entry.Name())
-											_, _ = trackingFs.ReadFile(filePath)
+											_, _ = trackingFs.ReadFile(filePath) //nolint:errcheck // File tracking, errors are non-critical
 										}
 									}
 								}
@@ -695,7 +701,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 						templateData = make(map[string]any)
 					}
 					renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
-					_, _ = renderer.RenderToBytes(helmfilePath)
+					_, _ = renderer.RenderToBytes(helmfilePath) //nolint:errcheck // Template tracking, errors are non-critical
 				}
 			}
 		}
@@ -709,27 +715,28 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 				_, err := creator.LoadFile(emptyEnv, nil, baseDir, helmfilePath, true)
 				if err != nil {
 					// But still try to read the file to track it
-					_, _ = trackingFs.ReadFile(helmfilePath)
+					_, _ = trackingFs.ReadFile(helmfilePath) //nolint:errcheck // File tracking, errors are non-critical
 				}
 
 				// Also load values files from helmfiles
 				for _, val := range hf.Environment.OverrideValues {
 					if valStr, ok := val.(string); ok && valStr != "" {
 						valPath := resolvePath(baseDir, valStr)
-						_, _ = trackingFs.ReadFile(valPath)
+						_, _ = trackingFs.ReadFile(valPath) //nolint:errcheck // File tracking, errors are non-critical
 					}
 				}
 			}
 		}
 
 		// Track values files from releases (including files in parent directories)
-		for _, release := range state.Releases {
+		for i := range state.Releases {
+			release := &state.Releases[i]
 			for _, val := range release.Values {
 				if valStr, ok := val.(string); ok && valStr != "" {
 					// Resolve path relative to baseDir (can be relative like ../values.yaml)
 					valPath := resolvePath(baseDir, valStr)
 					// Track the file (this will read it if it exists and contains templates)
-					_, _ = trackingFs.ReadFile(valPath)
+					_, _ = trackingFs.ReadFile(valPath) //nolint:errcheck // File tracking, errors are non-critical
 				}
 			}
 
@@ -737,7 +744,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			for _, secret := range release.Secrets {
 				if secretStr, ok := secret.(string); ok && secretStr != "" {
 					secretPath := resolvePath(baseDir, secretStr)
-					_, _ = trackingFs.ReadFile(secretPath)
+					_, _ = trackingFs.ReadFile(secretPath) //nolint:errcheck // File tracking, errors are non-critical
 				}
 			}
 		}
@@ -996,7 +1003,7 @@ func listAllFunctions() {
 	r := tmpl.NewFileRenderer(filesystem.DefaultFileSystem(), ".", nil)
 	funcMap := r.Context.CreateFuncMap()
 
-	var names []string
+	names := make([]string, 0, len(funcMap))
 	for name := range funcMap {
 		names = append(names, name)
 	}
@@ -1056,7 +1063,7 @@ func extractFunctions(content string) []string {
 	}
 
 	addFunc := func(name string) {
-		if !keywords[name] && !seen[name] && len(name) > 0 {
+		if !keywords[name] && !seen[name] && name != "" {
 			if !strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "$") {
 				funcs = append(funcs, name)
 				seen[name] = true
@@ -1146,7 +1153,7 @@ func extractFunctions(content string) []string {
 		pattern5 := regexp.MustCompile(`\(\s*([a-zA-Z][a-zA-Z0-9_]*)`)
 
 		// Pattern for function after another identifier and space: toYaml .Values, get "key" .Map
-		pattern6 := regexp.MustCompile(`\s([a-zA-Z][a-zA-Z0-9_]*)\s+["\.\$]`)
+		pattern6 := regexp.MustCompile(`\s([a-zA-Z][a-zA-Z0-9_]*)\s+[".\$]`)
 
 		for _, match := range pattern1.FindAllStringSubmatch(blockContent, -1) {
 			if len(match) > 1 {

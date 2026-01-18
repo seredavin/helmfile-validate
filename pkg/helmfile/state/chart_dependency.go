@@ -93,7 +93,7 @@ type ResolvedDependencies struct {
 	deps map[string][]ResolvedChartDependency
 }
 
-// nolint: unparam
+//nolint:unparam
 func (d *ResolvedDependencies) add(dep ResolvedChartDependency) error {
 	deps := d.deps[dep.ChartName]
 	if deps == nil {

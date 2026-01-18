@@ -50,7 +50,7 @@ func TestExtractFunctions(t *testing.T) {
 			expected: []string{},
 		},
 		{
-			name:     "yaml comment with template should be ignored",
+			name: "yaml comment with template should be ignored",
 			content: `releases:
   - name: test
     # {{ readFile "file.yaml" }}
@@ -68,7 +68,7 @@ func TestExtractFunctions(t *testing.T) {
 			expected: []string{"exec"},
 		},
 		{
-			name:     "gotmpl file with commented template",
+			name: "gotmpl file with commented template",
 			content: `# {{ exec "echo" "commented" }}
 {{- define "test" }}
   value: {{ toYaml .Values }}
@@ -76,7 +76,7 @@ func TestExtractFunctions(t *testing.T) {
 			expected: []string{"toYaml"},
 		},
 		{
-			name:     "gotmpl file with inline comment",
+			name: "gotmpl file with inline comment",
 			content: `{{- define "test" }}
   value: {{ toYaml .Values }}
   # {{ exec "commented" }}
@@ -85,7 +85,7 @@ func TestExtractFunctions(t *testing.T) {
 			expected: []string{"toYaml"},
 		},
 		{
-			name:     "gotmpl file with comment in define block",
+			name: "gotmpl file with comment in define block",
 			content: `{{- define "test" }}
   # {{ exec "commented exec" }}
   # {{ readFile "file.yaml" }}
@@ -94,7 +94,7 @@ func TestExtractFunctions(t *testing.T) {
 			expected: []string{"toYaml"},
 		},
 		{
-			name:     "gotmpl file with hash in string",
+			name: "gotmpl file with hash in string",
 			content: `{{- define "test" }}
   value: {{ exec "echo" "# not a comment" }}
 {{- end }}`,
