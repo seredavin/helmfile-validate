@@ -69,8 +69,3 @@ release:
 
 snapshot:
   name_template: "{{ .Tag }}-next"
-
-blobs:
-  - provider: github
-    ids:
-      - default
