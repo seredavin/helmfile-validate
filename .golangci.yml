@@ -30,7 +30,6 @@ linters:
     - exhaustive
     - nolintlint
     - whitespace
-    - shadow
 
 linters-settings:
   errcheck:
