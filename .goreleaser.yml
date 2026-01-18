@@ -41,8 +41,6 @@ changelog:
 release:
   mode: replace
   header: |
-    ## {{ .TagName }}
-    
     {{ .ReleaseNotes }}
   
   footer: |
