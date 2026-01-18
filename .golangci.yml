@@ -19,7 +19,7 @@ linters:
     - gocritic
     - unconvert
     - prealloc
-    - exportloopref
+    - copyloopvar
     - goconst
     - bodyclose
     - noctx
