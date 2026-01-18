@@ -2615,7 +2615,7 @@ func (st *HelmState) DeleteReleases(affectedReleases *AffectedReleases, helm hel
 			release.duration = time.Since(start)
 
 			affectedReleases.Failed = append(affectedReleases.Failed, &release)
-		affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, &release)
+			affectedReleases.DeleteFailed = append(affectedReleases.DeleteFailed, &release)
 
 			return err
 		}
@@ -3442,9 +3442,7 @@ func (st *HelmState) flagsForDiff(helm helmexec.Interface, release *ReleaseSpec,
 		if diffVersion.LessThan(dv) {
 			return nil, nil, fmt.Errorf("insecureSkipTLSVerify is not supported by helm-diff plugin version %s, please use at least v3.8.1", diffVersion)
 		}
-
-			break
-		}
+		break
 	}
 
 	flags = st.appendHelmXFlags(flags, release)
@@ -3831,18 +3829,11 @@ func (st *HelmState) generateTemporaryReleaseValuesFiles(release *ReleaseSpec, v
 				return generatedFiles, err
 			}
 
-			func(f *os.File) {
-				defer func() {
-					_ = f.Close()
-				}()
-				if _, err := f.Write(yamlBytes); err != nil {
-					return
-				}
-			}(valfile)
-
 			if _, err := valfile.Write(yamlBytes); err != nil {
+				_ = valfile.Close()
 				return generatedFiles, fmt.Errorf("failed to write %s: %v", valfile.Name(), err)
 			}
+			_ = valfile.Close()
 
 			st.logger.Debugf("Successfully generated the value file at %s. produced:\n%s", path, string(yamlBytes))
 
@@ -3853,23 +3844,10 @@ func (st *HelmState) generateTemporaryReleaseValuesFiles(release *ReleaseSpec, v
 				return generatedFiles, err
 			}
 
-			func(f *os.File) {
-				defer func() {
-					_ = f.Close()
-				}()
-				encoder := yaml.NewEncoder(f)
-				defer func() {
-					_ = encoder.Close()
-				}()
-				if err := encoder.Encode(typedValue); err != nil {
-					return
-				}
-			}(valfile)
-
 			encoder := yaml.NewEncoder(valfile)
 			if err := encoder.Encode(typedValue); err != nil {
-				_ = valfile.Close()
 				_ = encoder.Close()
+				_ = valfile.Close()
 				return generatedFiles, err
 			}
 			_ = encoder.Close()
@@ -3941,12 +3919,6 @@ func (st *HelmState) generateSecretValuesFiles(helm helmexec.Interface, release 
 			}
 			_ = path.Close()
 
-			func(p *os.File) {
-				defer func() {
-					_ = os.Remove(p.Name())
-				}()
-			}(path)
-
 			if err := os.WriteFile(path.Name(), bs, 0644); err != nil {
 				_ = os.Remove(path.Name())
 				return nil, err
@@ -3968,12 +3940,6 @@ func (st *HelmState) generateSecretValuesFiles(helm helmexec.Interface, release 
 		if err != nil {
 			return nil, err
 		}
-
-		func(v string) {
-			defer func() {
-				_ = os.Remove(v)
-			}()
-		}(valfile)
 
 		generatedDecryptedFiles = append(generatedDecryptedFiles, valfile)
 	}
