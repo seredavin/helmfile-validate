@@ -69,7 +69,7 @@ type Affected struct {
 
 func (helm *Helm) UpdateDeps(chart string) error {
 	if strings.Contains(chart, "error") {
-		return fmt.Errorf("simulated UpdateDeps failure for chart: %s", chart)
+		return fmt.Errorf("simulated UpdateDeps failure for chart: %v", chart)
 	}
 	helm.Charts = append(helm.Charts, chart)
 

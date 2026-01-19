@@ -40,7 +40,7 @@ func FormatAsJson(releases []*HelmRelease) error {
 	output, err := json.Marshal(releases)
 
 	if err != nil {
-		return fmt.Errorf("error generating json: %v", err)
+		return fmt.Errorf("error generating json: %w", err)
 	}
 
 	fmt.Println(string(output))

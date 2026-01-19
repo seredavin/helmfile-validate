@@ -22,8 +22,8 @@ func TestOCIChartFileLock(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -67,8 +67,8 @@ func TestOCIChartFileLock(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 		dataFilePath := filepath.Join(tempDir, "data.txt")
@@ -115,8 +115,8 @@ func TestOCIChartFileLock(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		// Simulate nested chart path structure
 		chartPath := filepath.Join(tempDir, "registry", "charts", "myapp", "1.0.0")
@@ -144,8 +144,8 @@ func TestOCIChartFileLock(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -192,8 +192,8 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-shared-lock-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -247,8 +247,8 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-excl-block-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -291,8 +291,8 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-shared-block-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -335,8 +335,8 @@ func TestOCIChartSharedExclusiveLocks(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-lock-release-test-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test-chart.lock")
 
@@ -384,8 +384,8 @@ func TestChartLockResultRelease(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-release-excl-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test.lock")
 		fileLock := flock.New(lockFilePath)
@@ -417,8 +417,8 @@ func TestChartLockResultRelease(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-release-shared-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		lockFilePath := filepath.Join(tempDir, "test.lock")
 		fileLock := flock.New(lockFilePath)
@@ -461,8 +461,8 @@ func TestOCIChartDoubleCheckLocking(t *testing.T) {
 		tempDir, err := os.MkdirTemp("", "helmfile-double-check-*")
 		require.NoError(t, err)
 		defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+			_ = os.RemoveAll(tempDir)
+		}()
 
 		chartPath := filepath.Join(tempDir, "myrepo", "mychart", "1.0.0")
 		lockFilePath := chartPath + ".lock"

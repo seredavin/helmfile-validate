@@ -290,7 +290,7 @@ func (st *HelmState) goGetterChart(chart, dir, cacheDir string, force bool) (str
 
 		fetchedDir, err := r.Fetch(chart, cacheDir)
 		if err != nil {
-			return "", fmt.Errorf("fetching %q: %v", chart, err)
+			return "", fmt.Errorf("fetching %q: %w", chart, err)
 		}
 
 		chart = fetchedDir
@@ -412,7 +412,7 @@ func (st *HelmState) PrepareChartify(helm helmexec.Interface, release *ReleaseSp
 		c.Opts.ValuesFiles = generatedFiles
 		setFlags, err := st.setFlags(release.SetValues)
 		if err != nil {
-			return nil, clean, fmt.Errorf("rendering set value entry for release %s: %v", release.Name, err)
+			return nil, clean, fmt.Errorf("rendering set value entry for release %s: %w", release.Name, err)
 		}
 		c.Opts.SetFlags = setFlags
 		c.Opts.TemplateData = st.newReleaseTemplateData(release)

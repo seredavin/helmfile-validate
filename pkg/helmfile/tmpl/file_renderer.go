@@ -55,14 +55,14 @@ func (r *FileRenderer) RenderToBytes(path string) ([]byte, error) {
 	if len(splits) > 0 && splits[len(splits)-1] == "gotmpl" {
 		yamlBuf, err := r.RenderTemplateFileToBuffer(path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to render [%s], because of %v", path, err)
+			return nil, fmt.Errorf("failed to render [%s], because of %w", path, err)
 		}
 		yamlBytes = yamlBuf.Bytes()
 	} else {
 		var err error
 		yamlBytes, err = r.fs.ReadFile(path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load [%s]: %v", path, err)
+			return nil, fmt.Errorf("failed to load [%s]: %w", path, err)
 		}
 	}
 	return yamlBytes, nil

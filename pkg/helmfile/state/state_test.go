@@ -1582,7 +1582,7 @@ func TestHelmState_SyncReleases_MissingValuesFileForUndesiredRelease(t *testing.
 			helm := &exectest.Helm{
 				Lists: map[exectest.ListKey]string{},
 			}
-			//simulate the helm.list call result
+			// simulate the helm.list call result
 			helm.Lists[exectest.ListKey{Filter: "^" + tt.release.Name + "$"}] = tt.listResult
 
 			affectedReleases := AffectedReleases{}
@@ -1726,7 +1726,7 @@ func TestHelmState_SyncReleasesAffectedRealeases(t *testing.T) {
 			helm := &exectest.Helm{
 				Lists: map[exectest.ListKey]string{},
 			}
-			//simulate the release is already installed
+			// simulate the release is already installed
 			for i, release := range tt.releases {
 				if tt.installed != nil && tt.installed[i] {
 					helm.Lists[exectest.ListKey{Filter: "^" + release.Name + "$", Flags: "--uninstalling --deployed --failed --pending"}] = release.Name
@@ -1737,7 +1737,7 @@ func TestHelmState_SyncReleasesAffectedRealeases(t *testing.T) {
 			if err := state.SyncReleases(&affectedReleases, helm, []string{}, 1); err != nil {
 				if !testEq(affectedReleases.Failed, tt.wantAffected.Failed) {
 					t.Errorf("HelmState.SynchAffectedRelease() error failed for [%s] = %v, want %v", tt.name, affectedReleases.Failed, tt.wantAffected.Failed)
-				} //else expected error
+				} // else expected error
 			}
 			if !testEq(affectedReleases.Upgraded, tt.wantAffected.Upgraded) {
 				t.Errorf("HelmState.SynchAffectedRelease() upgrade failed for [%s] = %v, want %v", tt.name, affectedReleases.Upgraded, tt.wantAffected.Upgraded)
@@ -1829,7 +1829,7 @@ func TestHelmState_SyncReleasesAffectedReleasesWithReinstallIfForbidden(t *testi
 			helm := &exectest.Helm{
 				Lists: map[exectest.ListKey]string{},
 			}
-			//simulate the release is already installed
+			// simulate the release is already installed
 			for i, release := range tt.releases {
 				if tt.installed != nil && tt.installed[i] {
 					helm.Lists[exectest.ListKey{Filter: "^" + release.Name + "$", Flags: "--uninstalling --deployed --failed --pending"}] = release.Name
@@ -1840,7 +1840,7 @@ func TestHelmState_SyncReleasesAffectedReleasesWithReinstallIfForbidden(t *testi
 			if err := state.SyncReleases(&affectedReleases, helm, []string{}, 1); err != nil {
 				if !testEq(affectedReleases.Failed, tt.wantAffected.Failed) {
 					t.Errorf("HelmState.SyncReleases() error failed for [%s] = %v, want %v", tt.name, affectedReleases.Failed, tt.wantAffected.Failed)
-				} //else expected error
+				} // else expected error
 			}
 			if !testEq(affectedReleases.Upgraded, tt.wantAffected.Upgraded) {
 				t.Errorf("HelmState.SyncReleases() upgrade failed for [%s] = %v, want %v", tt.name, affectedReleases.Upgraded, tt.wantAffected.Upgraded)
@@ -2362,7 +2362,7 @@ func TestHelmState_UpdateDeps(t *testing.T) {
 		if err != nil {
 			return "", err
 		}
-		// nolint: unparam
+		//nolint:unparam
 		helm.UpdateDepsCallbacks[generatedDir] = func(chart string) error {
 			content := []byte(`dependencies:
 - name: envoy

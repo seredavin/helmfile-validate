@@ -46,7 +46,7 @@ func (st *HelmState) scatterGatherReleases(helm helmexec.Interface, concurrency 
 	return st.iterateOnReleases(helm, concurrency, st.Releases, do)
 }
 
-// nolint: unparam
+//nolint:unparam
 func (st *HelmState) iterateOnReleases(helm helmexec.Interface, concurrency int, inputs []ReleaseSpec,
 	do func(ReleaseSpec, int) error) []error {
 	var errs []error

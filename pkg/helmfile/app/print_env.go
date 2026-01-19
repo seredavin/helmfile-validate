@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/seredavin/helmfile-validate/pkg/helmfile/yaml"
@@ -82,7 +83,8 @@ func (a *App) PrintEnv(c PrintEnvConfigProvider) error {
 	}
 
 	// Suppress "no releases found" error - print-env doesn't need releases
-	if _, ok := err.(*NoMatchingHelmfileError); ok {
+	var noMatchErr *NoMatchingHelmfileError
+	if errors.As(err, &noMatchErr) {
 		return nil
 	}
 

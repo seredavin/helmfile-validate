@@ -1,0 +1,117 @@
+version: 2
+
+run:
+  timeout: 5m
+  tests: true
+  go: '1.25'
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - unconvert
+    - copyloopvar
+    - bodyclose
+    - wastedassign
+    - unparam
+    - nakedret
+    - errorlint
+    - exhaustive
+    - nolintlint
+    - whitespace
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+    disabled-checks:
+      - dupImport
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+      - appendAssign
+      - singleCaseSwitch
+      - captLocal
+      - deprecatedComment
+      - elseif
+  goimports:
+    local-prefixes: github.com/seredavin/helmfile-validate
+  gosec:
+    severity: medium
+    confidence: medium
+  misspell:
+    locale: US
+  nolintlint:
+    allow-leading-space: true
+    allow-unused: false
+    require-explanation: false
+    require-specific: false
+
+issues:
+  exclude-dirs:
+    - vendor
+    - vendor-stubs
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+        - gocritic
+        - goconst
+        - errorlint
+        - prealloc
+        - nakedret
+        - wastedassign
+        - noctx
+    - path: integration_test\.go
+      linters:
+        - errcheck
+        - errorlint
+        - gocritic
+        - gosec
+        - goconst
+        - noctx
+    - path: main_test\.go
+      linters:
+        - errcheck
+        - errorlint
+        - gocritic
+        - gosec
+        - goconst
+        - noctx
+    - path: pkg/helmfile/state/release\.go
+      linters:
+        - errorlint
+    - path: pkg/helmfile/app/app\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
+    - path: pkg/helmfile/state/state\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
+    - path: pkg/helmfile/state/state_run\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
+    - path: pkg/helmfile/tmpl/get_or_nil\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
+    - path: vendor
+      linters:
+        - all
+    - path: vendor-stubs
+      linters:
+        - all
+  max-issues-per-linter: 0
+  max-same-issues: 0

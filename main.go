@@ -67,19 +67,26 @@ type OutputResult struct {
 	Validation *ValidationResult `json:"validation,omitempty"`
 }
 
+const (
+	funcCategorySprig       = "sprig"
+	funcCategoryHelmfile    = "helmfile"
+	validationModeBlacklist = "blacklist"
+	validationModeNoHooks   = "no-hooks"
+)
+
 var (
-	version      = "dev"
-	commit       = "unknown"
-	buildDate    = "unknown"
-	jsonOutput   bool
-	showExecOnly bool
-	showUnknown  bool
-	showInsecure bool
+	version       = "dev"
+	commit        = "unknown"
+	buildDate     = "unknown"
+	jsonOutput    bool
+	showExecOnly  bool
+	showUnknown   bool
+	showInsecure  bool
 	listFunctions bool
-	blacklist    string
-	whitelist    string
-	noColor      bool
-	noHooks      bool
+	blacklist     string
+	whitelist     string
+	noColor       bool
+	noHooks       bool
 )
 
 func init() {
@@ -97,7 +104,7 @@ func init() {
 func main() {
 	// Add version flag
 	showVersion := flag.Bool("version", false, "Show version information and exit")
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, `helmfile-validate - Scan helmfile templates for function usage
 
@@ -201,16 +208,14 @@ Validation modes:
 		hookValidation := validateHooks(result)
 		if validation == nil {
 			validation = hookValidation
-		} else {
+		} else if !hookValidation.Valid {
 			// Merge hook validation into existing validation
-			if !hookValidation.Valid {
-				validation.Valid = false
-				validation.HookViolations = hookValidation.HookViolations
-				if validation.Mode != "" {
-					validation.Mode = validation.Mode + "+no-hooks"
-				} else {
-					validation.Mode = "no-hooks"
-				}
+			validation.Valid = false
+			validation.HookViolations = hookValidation.HookViolations
+			if validation.Mode != "" {
+				validation.Mode += "+no-hooks"
+			} else {
+				validation.Mode = validationModeNoHooks
 			}
 		}
 	}
@@ -265,7 +270,7 @@ func validateFunctions(result *ScanResult, blacklistStr, whitelistStr string) *V
 
 	if blacklistStr != "" {
 		// Blacklist mode: fail if any blacklisted function is found
-		validation.Mode = "blacklist"
+		validation.Mode = validationModeBlacklist
 		validation.Rules = parseList(blacklistStr)
 		blacklistSet := make(map[string]bool)
 		for _, name := range validation.Rules {
@@ -434,7 +439,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 	// Build known functions map
 	knownFuncs := make(map[string]string) // name -> category
 	for name := range funcMap {
-		knownFuncs[name] = "sprig"
+		knownFuncs[name] = funcCategorySprig
 	}
 
 	// Mark helmfile-specific functions
@@ -444,7 +449,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		"tpl", "required", "fetchSecretValue", "expandSecretRefs", "sprigGet", "include",
 	}
 	for _, name := range helmfileSpecific {
-		knownFuncs[name] = "helmfile"
+		knownFuncs[name] = funcCategoryHelmfile
 	}
 
 	result := &ScanResult{
@@ -472,7 +477,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		return result
 	}
 	defer func() {
-		_ = logger.Sync() // Best effort sync on exit
+		_ = logger.Sync()
 	}()
 	sugarLogger := logger.Sugar()
 
@@ -625,7 +630,8 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			result.Hooks = append(result.Hooks, hookUsage)
 		}
 		// Extract release-level hooks
-		for _, release := range stateForHooks.Releases {
+		for i := range stateForHooks.Releases {
+			release := &stateForHooks.Releases[i]
 			for _, hook := range release.Hooks {
 				hookUsage := &HookUsage{
 					File:    relMainFile,
@@ -723,7 +729,8 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		}
 
 		// Track values files from releases (including files in parent directories)
-		for _, release := range state.Releases {
+		for i := range state.Releases {
+			release := &state.Releases[i]
 			for _, val := range release.Values {
 				if valStr, ok := val.(string); ok && valStr != "" {
 					// Resolve path relative to baseDir (can be relative like ../values.yaml)
@@ -996,7 +1003,7 @@ func listAllFunctions() {
 	r := tmpl.NewFileRenderer(filesystem.DefaultFileSystem(), ".", nil)
 	funcMap := r.Context.CreateFuncMap()
 
-	var names []string
+	names := make([]string, 0, len(funcMap))
 	for name := range funcMap {
 		names = append(names, name)
 	}
@@ -1056,7 +1063,7 @@ func extractFunctions(content string) []string {
 	}
 
 	addFunc := func(name string) {
-		if !keywords[name] && !seen[name] && len(name) > 0 {
+		if !keywords[name] && !seen[name] && name != "" {
 			if !strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "$") {
 				funcs = append(funcs, name)
 				seen[name] = true
@@ -1146,7 +1153,7 @@ func extractFunctions(content string) []string {
 		pattern5 := regexp.MustCompile(`\(\s*([a-zA-Z][a-zA-Z0-9_]*)`)
 
 		// Pattern for function after another identifier and space: toYaml .Values, get "key" .Map
-		pattern6 := regexp.MustCompile(`\s([a-zA-Z][a-zA-Z0-9_]*)\s+["\.\$]`)
+		pattern6 := regexp.MustCompile(`\s([a-zA-Z][a-zA-Z0-9_]*)\s+[".\$]`)
 
 		for _, match := range pattern1.FindAllStringSubmatch(blockContent, -1) {
 			if len(match) > 1 {

@@ -111,14 +111,14 @@ func (bus *Bus) Trigger(evt string, evtErr error, context map[string]any) (bool,
 
 		command, err := render.RenderTemplateText(hook.Command)
 		if err != nil {
-			return false, fmt.Errorf("hook[%s]: %v", name, err)
+			return false, fmt.Errorf("hook[%s]: %w", name, err)
 		}
 
 		args := make([]string, len(hook.Args))
 		for i, raw := range hook.Args {
 			args[i], err = render.RenderTemplateText(raw)
 			if err != nil {
-				return false, fmt.Errorf("hook[%s]: %v", name, err)
+				return false, fmt.Errorf("hook[%s]: %w", name, err)
 			}
 		}
 
@@ -130,7 +130,7 @@ func (bus *Bus) Trigger(evt string, evtErr error, context map[string]any) (bool,
 		}
 
 		if err != nil {
-			return false, fmt.Errorf("hook[%s]: command `%s` failed: %v", name, command, err)
+			return false, fmt.Errorf("hook[%s]: command `%s` failed: %w", name, command, err)
 		}
 
 		executed = true
