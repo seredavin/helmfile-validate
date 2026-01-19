@@ -109,7 +109,7 @@ func (hl *HCLLoader) createDAGGraph(HelmfileHCLValues map[string]*HelmfileHCLVal
 		for _, tr := range hv.Expr.Variables() {
 			attr, diags := hl.parseSingleAttrRef(tr, blockType)
 			if diags != nil {
-				return nil, fmt.Errorf("%s", diags.Errs()[0])
+				return nil, fmt.Errorf("%w", diags.Errs()[0])
 			}
 			if attr != "" && !slices.Contains(traversals, attr) {
 				traversals = append(traversals, attr)
@@ -119,7 +119,7 @@ func (hl *HCLLoader) createDAGGraph(HelmfileHCLValues map[string]*HelmfileHCLVal
 		dagGraph.Add(hv.Name, dag.Dependencies(traversals))
 	}
 
-	//Generate Dag Plan which will provide the order from which to interpolate vars
+	// Generate Dag Plan which will provide the order from which to interpolate vars
 	plan, err := dagGraph.Plan(dag.SortOptions{
 		WithDependencies: true,
 	})
@@ -134,7 +134,7 @@ func (hl *HCLLoader) createDAGGraph(HelmfileHCLValues map[string]*HelmfileHCLVal
 		}
 		return nil, fmt.Errorf("variables %s depend(s) on undefined vars %q", strings.Join(quotedVariableNames, ", "), ude.UndefinedNode)
 	} else {
-		return nil, fmt.Errorf("error while building the DAG variable graph : %s", err.Error())
+		return nil, fmt.Errorf("error while building the DAG variable graph : %v", err.Error())
 	}
 }
 
@@ -161,7 +161,7 @@ func (hl *HCLLoader) decodeGraph(dagTopology *dag.Topology, blocktype string, va
 			// Decode Value
 			helmfileHCLValuesValues[node.String()], diags = v.Expr.Value(ctx)
 			if len(diags) > 0 {
-				return nil, fmt.Errorf("error when trying to evaluate variable %s : %s", v.Name, diags.Errs()[0])
+				return nil, fmt.Errorf("error when trying to evaluate variable %s : %w", v.Name, diags.Errs()[0])
 			}
 			switch blocktype {
 			case ValuesBlockIdentifier:
@@ -361,13 +361,13 @@ func (hl *HCLLoader) convertToGo(src map[string]cty.Value) (map[string]any, erro
 	// We only care about the value
 	b, err := json.Marshal(src[valuesAccessorPrefix], cty.DynamicPseudoType)
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal cty value : %s", err.Error())
+		return nil, fmt.Errorf("could not marshal cty value : %v", err.Error())
 	}
 
 	var jsonunm map[string]any
 	err = nativejson.Unmarshal(b, &jsonunm)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshall json : %s", err.Error())
+		return nil, fmt.Errorf("could not unmarshall json : %v", err.Error())
 	}
 
 	if result, ok := jsonunm["value"].(map[string]any); ok {

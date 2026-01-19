@@ -253,7 +253,7 @@ func (a *App) Template(c TemplateConfigProvider) error {
 			errs = append(errs, prepErr)
 		}
 
-		return
+		return ok, errs
 	}, c.IncludeTransitiveNeeds())
 }
 
@@ -577,7 +577,7 @@ func (a *App) PrintState(c StateConfigProvider) error {
 			errs = append(errs, err)
 		}
 
-		return
+		return false, errs
 	}, false, SetFilter(true))
 }
 
@@ -707,7 +707,7 @@ func (a *App) within(dir string, do func() error) error {
 
 	prev, err := a.fs.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed getting current working directory: %v", err)
+		return fmt.Errorf("failed getting current working directory: %w", err)
 	}
 
 	absDir, err := a.fs.Abs(dir)
@@ -718,7 +718,7 @@ func (a *App) within(dir string, do func() error) error {
 	a.Logger.Debugf("changing working directory to \"%s\"", absDir)
 
 	if err := a.fs.Chdir(absDir); err != nil {
-		return fmt.Errorf("failed changing working directory to \"%s\": %v", absDir, err)
+		return fmt.Errorf("failed changing working directory to \"%s\": %w", absDir, err)
 	}
 
 	appErr := do()
@@ -729,7 +729,7 @@ func (a *App) within(dir string, do func() error) error {
 		if appErr != nil {
 			a.Logger.Warnf("%v", appErr)
 		}
-		return fmt.Errorf("failed chaging working directory back to \"%s\": %v", prev, chdirBackErr)
+		return fmt.Errorf("failed chaging working directory back to \"%s\": %w", prev, chdirBackErr)
 	}
 
 	return appErr
@@ -1382,7 +1382,7 @@ func (a *App) WrapWithoutSelector(converge func(*state.HelmState, helmexec.Inter
 func (a *App) findDesiredStateFiles(specifiedPath string, opts LoadOpts) ([]string, error) {
 	path, err := a.remote.Locate(specifiedPath, "states")
 	if err != nil {
-		return nil, fmt.Errorf("locate: %v", err)
+		return nil, fmt.Errorf("locate: %w", err)
 	}
 	if specifiedPath != path {
 		a.Logger.Debugf("fetched remote \"%s\" to local cache \"%s\" and loading the latter...", specifiedPath, path)
@@ -2372,7 +2372,7 @@ func (e *Error) Error() string {
 		}
 		cause = fmt.Sprintf("%d errors:\n%s", len(e.Errors), strings.Join(msgs, "\n"))
 	}
-	msg := ""
+	var msg string
 	if e.msg != "" {
 		msg = fmt.Sprintf("%s: %s", e.msg, cause)
 	} else {

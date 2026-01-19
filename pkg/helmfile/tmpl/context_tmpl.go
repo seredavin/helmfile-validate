@@ -60,12 +60,12 @@ func (c *Context) helperTPLs() ([]tplInfo, error) {
 	tplInfos := []tplInfo{}
 	files, err := c.fs.Glob(filepath.Join(c.basePath, "_*.tpl"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to glob helper templates: %v", err)
+		return nil, fmt.Errorf("failed to glob helper templates: %w", err)
 	}
 	for _, file := range files {
 		content, err := c.fs.ReadFile(file)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read helper template %s: %v", file, err)
+			return nil, fmt.Errorf("failed to read helper template %s: %w", file, err)
 		}
 		tplInfos = append(tplInfos, tplInfo{name: file, content: string(content)})
 	}
@@ -113,7 +113,7 @@ func (c *Context) newTemplate() (*template.Template, error) {
 	for _, tpl := range tpls {
 		tmpl, err = tmpl.Parse(tpl.content)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse helper template %s: %v", tpl.name, err)
+			return nil, fmt.Errorf("failed to parse helper template %s: %w", tpl.name, err)
 		}
 	}
 

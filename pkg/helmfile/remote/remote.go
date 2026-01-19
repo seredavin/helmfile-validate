@@ -181,14 +181,14 @@ func ParseNormalProtocol(path string) (string, error) {
 	parts := strings.Split(path, "://")
 
 	if len(parts) == 0 {
-		return "", fmt.Errorf("failed to parse URL %s", path)
+		return "", fmt.Errorf("failed to parse URL %v", path)
 	}
 	protocol := strings.ToLower(parts[0])
 
 	if slices.Contains(protocols, protocol) {
 		return protocol, nil
 	}
-	return "", fmt.Errorf("failed to parse URL %s", path)
+	return "", fmt.Errorf("failed to parse URL %v", path)
 }
 
 func (r *Remote) Fetch(path string, cacheDirOpt ...string) (string, error) {
@@ -344,7 +344,7 @@ func (g *GoGetter) Get(wd, src, dst string) error {
 
 	client := &getter.Client{}
 	if _, err := client.Get(ctx, req); err != nil {
-		return fmt.Errorf("get: %v", err)
+		return fmt.Errorf("get: %w", err)
 	}
 
 	return nil
@@ -504,7 +504,7 @@ func (g *S3Getter) S3FileExists(path string) (string, error) {
 	}
 	resp, err := s3Client.GetBucketLocation(context.TODO(), getBucketLocationInput)
 	if err != nil {
-		return "", fmt.Errorf("failed to retrieve bucket location: %v", err)
+		return "", fmt.Errorf("failed to retrieve bucket location: %w", err)
 	}
 	if resp == nil || string(resp.LocationConstraint) == "" {
 		g.Logger.Debugf("Bucket has no location Assuming us-east-1")

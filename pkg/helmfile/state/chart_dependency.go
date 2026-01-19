@@ -148,7 +148,7 @@ func (st *HelmState) mergeLockedDependencies() (*HelmState, error) {
 func resolveDependencies(st *HelmState, depMan *chartDependencyManager, unresolved *UnresolvedDependencies) (*HelmState, error) {
 	resolved, lockfileExists, err := depMan.Resolve(unresolved)
 	if err != nil {
-		return nil, fmt.Errorf("unable to resolve %d deps: %v", len(unresolved.deps), err)
+		return nil, fmt.Errorf("unable to resolve %d deps: %w", len(unresolved.deps), err)
 	}
 	if !lockfileExists {
 		return st, nil
@@ -195,7 +195,7 @@ func (st *HelmState) updateDependenciesInTempDir(shell helmexec.DependencyUpdate
 
 	d, err := tempDir("", "")
 	if err != nil {
-		return nil, fmt.Errorf("unable to create dir: %v", err)
+		return nil, fmt.Errorf("unable to create dir: %w", err)
 	}
 	defer func() {
 		_ = os.RemoveAll(d)
@@ -253,7 +253,7 @@ func updateDependencies(st *HelmState, shell helmexec.DependencyUpdater, unresol
 
 	_, err := depMan.Update(shell, wd, unresolved)
 	if err != nil {
-		return nil, fmt.Errorf("unable to update %d deps: %v", len(unresolved.deps), err)
+		return nil, fmt.Errorf("unable to update %d deps: %w", len(unresolved.deps), err)
 	}
 
 	return resolveDependencies(st, depMan, unresolved)

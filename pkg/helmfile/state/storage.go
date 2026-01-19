@@ -120,7 +120,7 @@ func (st *Storage) ExpandPaths(globPattern string) ([]string, error) {
 	absPathPattern := st.normalizePath(globPattern)
 	matches, err := st.fs.Glob(absPathPattern)
 	if err != nil {
-		return nil, fmt.Errorf("failed processing %s: %v", globPattern, err)
+		return nil, fmt.Errorf("failed processing %s: %w", globPattern, err)
 	}
 
 	sort.Strings(matches)

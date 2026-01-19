@@ -477,7 +477,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		return result
 	}
 	defer func() {
-		_ = logger.Sync() //nolint:errcheck // Best effort sync on exit
+		_ = logger.Sync()
 	}()
 	sugarLogger := logger.Sugar()
 
@@ -581,7 +581,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		for _, basePath := range parsedState.Bases {
 			resolvedBasePath := resolvePath(baseDir, basePath)
 			// Read the base file to ensure it's tracked
-			_, _ = trackingFs.ReadFile(resolvedBasePath) //nolint:errcheck // File tracking, errors are non-critical
+			_, _ = trackingFs.ReadFile(resolvedBasePath)
 			// If it's a .gotmpl file, also try to render it to track template usage
 			if strings.HasSuffix(resolvedBasePath, ".gotmpl") {
 				templateData := emptyEnv.Values
@@ -589,7 +589,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 					templateData = make(map[string]any)
 				}
 				renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
-				_, _ = renderer.RenderToBytes(resolvedBasePath) //nolint:errcheck // Template tracking, errors are non-critical
+				_, _ = renderer.RenderToBytes(resolvedBasePath)
 			}
 		}
 	}
@@ -604,7 +604,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		// Even if loading fails, try to parse the file to extract hooks
 		// This allows us to detect hooks even if full state loading fails
 		if parsedState == nil {
-			parsedState, _ = creator.Parse(fileBytes, baseDir, mainFile) //nolint:errcheck // Parsing errors are handled separately
+			parsedState, _ = creator.Parse(fileBytes, baseDir, mainFile)
 		}
 	}
 
@@ -616,7 +616,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 	}
 
 	if stateForHooks != nil {
-		relMainFile, _ := filepath.Rel(absPath, mainFile) //nolint:errcheck // Path resolution, errors handled by fallback
+		relMainFile, _ := filepath.Rel(absPath, mainFile)
 		if relMainFile == "" {
 			relMainFile = mainFile
 		}
@@ -651,7 +651,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 		for _, basePath := range state.Bases {
 			resolvedBasePath := resolvePath(baseDir, basePath)
 			// Read the base file to ensure it's tracked
-			_, _ = trackingFs.ReadFile(resolvedBasePath) //nolint:errcheck // File tracking, errors are non-critical
+			_, _ = trackingFs.ReadFile(resolvedBasePath)
 			// If it's a .gotmpl file, also try to render it to track template usage
 			if strings.HasSuffix(resolvedBasePath, ".gotmpl") {
 				templateData := state.RenderedValues
@@ -659,7 +659,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 					templateData = make(map[string]any)
 				}
 				renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
-				_, _ = renderer.RenderToBytes(resolvedBasePath) //nolint:errcheck // Template tracking, errors are non-critical
+				_, _ = renderer.RenderToBytes(resolvedBasePath)
 			}
 		}
 		// Process helmfiles field to load nested helmfile files
@@ -688,7 +688,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 									for _, entry := range entries {
 										if !entry.IsDir() {
 											filePath := filepath.Join(dirPath, entry.Name())
-											_, _ = trackingFs.ReadFile(filePath) //nolint:errcheck // File tracking, errors are non-critical
+											_, _ = trackingFs.ReadFile(filePath)
 										}
 									}
 								}
@@ -701,7 +701,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 						templateData = make(map[string]any)
 					}
 					renderer := tmpl.NewFileRenderer(trackingFs.FileSystem, baseDir, templateData)
-					_, _ = renderer.RenderToBytes(helmfilePath) //nolint:errcheck // Template tracking, errors are non-critical
+					_, _ = renderer.RenderToBytes(helmfilePath)
 				}
 			}
 		}
@@ -715,14 +715,14 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 				_, err := creator.LoadFile(emptyEnv, nil, baseDir, helmfilePath, true)
 				if err != nil {
 					// But still try to read the file to track it
-					_, _ = trackingFs.ReadFile(helmfilePath) //nolint:errcheck // File tracking, errors are non-critical
+					_, _ = trackingFs.ReadFile(helmfilePath)
 				}
 
 				// Also load values files from helmfiles
 				for _, val := range hf.Environment.OverrideValues {
 					if valStr, ok := val.(string); ok && valStr != "" {
 						valPath := resolvePath(baseDir, valStr)
-						_, _ = trackingFs.ReadFile(valPath) //nolint:errcheck // File tracking, errors are non-critical
+						_, _ = trackingFs.ReadFile(valPath)
 					}
 				}
 			}
@@ -736,7 +736,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 					// Resolve path relative to baseDir (can be relative like ../values.yaml)
 					valPath := resolvePath(baseDir, valStr)
 					// Track the file (this will read it if it exists and contains templates)
-					_, _ = trackingFs.ReadFile(valPath) //nolint:errcheck // File tracking, errors are non-critical
+					_, _ = trackingFs.ReadFile(valPath)
 				}
 			}
 
@@ -744,7 +744,7 @@ func scanDirectoryUsingStateCreator(absPath string) *ScanResult {
 			for _, secret := range release.Secrets {
 				if secretStr, ok := secret.(string); ok && secretStr != "" {
 					secretPath := resolvePath(baseDir, secretStr)
-					_, _ = trackingFs.ReadFile(secretPath) //nolint:errcheck // File tracking, errors are non-critical
+					_, _ = trackingFs.ReadFile(secretPath)
 				}
 			}
 		}

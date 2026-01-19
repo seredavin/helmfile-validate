@@ -115,7 +115,7 @@ func mapMerge(dest map[string]any, maps []any) (map[string]any, error) {
 			return nil, err
 		}
 		if err := mergo.Merge(&dest, &vals, mergo.WithOverride); err != nil {
-			return nil, fmt.Errorf("failed to merge %v: %v", m, err)
+			return nil, fmt.Errorf("failed to merge %v: %w", m, err)
 		}
 	}
 	return dest, nil

@@ -511,7 +511,7 @@ var DefaultFetchOutputDirTemplate = filepath.Join(
 	"{{ .Release.KubeContext }}{{ end }}",
 	"{{ .Release.Name }}",
 	"{{ .ChartName }}",
-	"{{ or .Release.Version \"latest\" }}", //nolint:gocritic // filepathJoin - this is a template string, not a file path
+	"{{ or .Release.Version \"latest\" }}",
 )
 
 func (st *HelmState) reformat(spec *ReleaseSpec) []string {
@@ -748,7 +748,7 @@ func (st *HelmState) prepareSyncReleases(helm helmexec.Interface, additionalValu
 					if err != nil {
 						errs = append(errs, newReleaseFailedError(release, err))
 					} else if !ok {
-						errs = append(errs, newReleaseFailedError(release, fmt.Errorf("file does not exist: %s", valfile)))
+						errs = append(errs, newReleaseFailedError(release, fmt.Errorf("file does not exist: %v", valfile)))
 					}
 					flags = append(flags, "--values", valfile)
 				}
@@ -1412,7 +1412,7 @@ func (st *HelmState) rewriteChartDependencies(chartPath string) (func(), error) 
 				absPath := filepath.Join(chartPath, relPath)
 				absPath, err = filepath.Abs(absPath)
 				if err != nil {
-					return cleanup, fmt.Errorf("failed to resolve absolute path for dependency %s: %w", dep.Name, err)
+					return cleanup, fmt.Errorf("failed to resolve absolute path for dependency %s: %v", dep.Name, err)
 				}
 
 				st.logger.Debugf("Rewriting Chart dependency %s from %s to file://%s", dep.Name, dep.Repository, absPath)
@@ -1684,7 +1684,6 @@ func (st *HelmState) prepareChartForRelease(release *ReleaseSpec, helm helmexec.
 	chartification, clean, err := st.PrepareChartify(helm, release, chartPath, workerIndex)
 
 	if !opts.SkipCleanup {
-		//nolint:staticcheck
 		defer clean()
 	}
 
@@ -2076,15 +2075,15 @@ func (st *HelmState) WriteReleasesValues(helm helmexec.Interface, additionalValu
 
 			srcBytes, err := st.fs.ReadFile(f)
 			if err != nil {
-				return []error{fmt.Errorf("reading %s: %w", f, err)}
+				return []error{fmt.Errorf("reading %s: %v", f, err)}
 			}
 
 			if err := yaml.Unmarshal(srcBytes, &src); err != nil {
-				return []error{fmt.Errorf("unmarshalling yaml %s: %w", f, err)}
+				return []error{fmt.Errorf("unmarshalling yaml %s: %v", f, err)}
 			}
 
 			if err := mergo.Merge(&merged, &src, mergo.WithOverride); err != nil {
-				return []error{fmt.Errorf("merging %s: %w", f, err)}
+				return []error{fmt.Errorf("merging %s: %v", f, err)}
 			}
 		}
 
@@ -2096,7 +2095,7 @@ func (st *HelmState) WriteReleasesValues(helm helmexec.Interface, additionalValu
 		}
 
 		if err := os.WriteFile(outputValuesFile, buf.Bytes(), 0644); err != nil {
-			return []error{fmt.Errorf("writing values file %s: %w", outputValuesFile, err)}
+			return []error{fmt.Errorf("writing values file %s: %v", outputValuesFile, err)}
 		}
 
 		if _, err := st.TriggerCleanupEvent(release, "write-values"); err != nil {
@@ -2996,7 +2995,7 @@ func (st *HelmState) UpdateDeps(helm helmexec.Interface, includeTransitiveNeeds 
 		}
 		_, err := st.updateDependenciesInTempDir(helm, tempDir)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("unable to update deps: %v", err))
+			errs = append(errs, fmt.Errorf("unable to update deps: %w", err))
 		}
 	}
 
@@ -3698,7 +3697,7 @@ func (st *HelmState) ExpandedHelmfiles() ([]SubHelmfileSpec, error) {
 			return nil, err
 		}
 		if len(matches) == 0 {
-			err := fmt.Errorf("no matches for path: %s", hf.Path)
+			err := fmt.Errorf("no matches for path: %v", hf.Path)
 			if *st.getMissingFileHandler() == "Error" {
 				return nil, err
 			}
@@ -4359,7 +4358,7 @@ func generateChartPath(chartName string, outputDir string, release *ReleaseSpec,
 
 	t, err := template.New("output-dir-template").Parse(outputDirTemplate)
 	if err != nil {
-		return "", fmt.Errorf("parsing output-dir-template template %q: %w", outputDirTemplate, err)
+		return "", fmt.Errorf("parsing output-dir-template template %q: %v", outputDirTemplate, err)
 	}
 
 	buf := &bytes.Buffer{}
@@ -4412,7 +4411,7 @@ func (st *HelmState) GenerateOutputFilePath(release *ReleaseSpec, outputFileTemp
 
 	t, err := template.New("output-file").Parse(outputFileTemplate)
 	if err != nil {
-		return "", fmt.Errorf("parsing output-file template %q: %w", outputFileTemplate, err)
+		return "", fmt.Errorf("parsing output-file template %q: %v", outputFileTemplate, err)
 	}
 
 	buf := &bytes.Buffer{}
@@ -4601,7 +4600,7 @@ func (st *HelmState) acquireChartLock(chartPath string, opts ChartPrepareOptions
 	lockFilePath := chartPath + ".lock"
 	lockFileDir := filepath.Dir(lockFilePath)
 	if err := os.MkdirAll(lockFileDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create lock directory %s: %w", lockFileDir, err)
+		return nil, fmt.Errorf("failed to create lock directory %s: %v", lockFileDir, err)
 	}
 	result.fileLock = flock.New(lockFilePath)
 
@@ -4692,11 +4691,11 @@ func (st *HelmState) acquireSharedLock(result *chartLockResult, chartPath string
 	locked, err := result.fileLock.TryRLockContext(ctx, 500*time.Millisecond)
 	if err != nil {
 		result.inProcessMutex.RUnlock()
-		return fmt.Errorf("failed to acquire shared file lock for chart %s: %w", chartPath, err)
+		return fmt.Errorf("failed to acquire shared file lock for chart %s: %v", chartPath, err)
 	}
 	if !locked {
 		result.inProcessMutex.RUnlock()
-		return fmt.Errorf("timeout waiting for shared file lock on chart %s", chartPath)
+		return fmt.Errorf("timeout waiting for shared file lock on chart %v", chartPath)
 	}
 
 	result.isExclusive = false
@@ -4747,7 +4746,7 @@ func (st *HelmState) acquireExclusiveLock(result *chartLockResult, chartPath str
 
 	if !locked {
 		result.inProcessMutex.Unlock()
-		return fmt.Errorf("failed to acquire exclusive file lock for chart %s after %d attempts: %w", chartPath, maxRetries, lockErr)
+		return fmt.Errorf("failed to acquire exclusive file lock for chart %s after %d attempts: %v", chartPath, maxRetries, lockErr)
 	}
 
 	result.isExclusive = true

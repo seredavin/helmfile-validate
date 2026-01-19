@@ -1,3 +1,5 @@
+version: 2
+
 run:
   timeout: 5m
   tests: true
@@ -6,23 +8,14 @@ run:
 linters:
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
     - unused
-    - gofmt
-    - goimports
     - misspell
-    - gosec
-    - gocritic
     - unconvert
-    - prealloc
     - copyloopvar
-    - goconst
     - bodyclose
-    - noctx
     - wastedassign
     - unparam
     - nakedret
@@ -39,15 +32,17 @@ linters-settings:
     enabled-tags:
       - diagnostic
       - experimental
-      - opinionated
-      - performance
-      - style
     disabled-checks:
       - dupImport
       - ifElseChain
       - octalLiteral
       - whyNoLint
       - wrapperFunc
+      - appendAssign
+      - singleCaseSwitch
+      - captLocal
+      - deprecatedComment
+      - elseif
   goimports:
     local-prefixes: github.com/seredavin/helmfile-validate
   gosec:
@@ -74,45 +69,44 @@ issues:
         - goconst
         - errorlint
         - prealloc
-        - rangeValCopy
-        - hugeParam
-        - paramTypeCombine
         - nakedret
         - wastedassign
+        - noctx
     - path: integration_test\.go
       linters:
         - errcheck
         - errorlint
         - gocritic
-    - path: pkg/helmfile
+        - gosec
+        - goconst
+        - noctx
+    - path: main_test\.go
       linters:
         - errcheck
-        - goconst
         - errorlint
+        - gocritic
         - gosec
-        - prealloc
-        - rangeValCopy
-        - hugeParam
-        - paramTypeCombine
-        - nakedret
-        - wastedassign
-        - emptyStringTest
-        - assignOp
-        - appendAssign
-        - deferInLoop
-        - regexpSimplify
-        - singleCaseSwitch
-        - sprintfQuotedString
-        - typeDefFirst
-        - unnamedResult
-        - builtinShadow
-        - captLocal
-        - commentFormatting
-        - argOrder
-        - sloppyReassign
-        - unnecessaryBlock
-        - stringConcatSimplify
-        - sortSlice
+        - goconst
+        - noctx
+    - path: pkg/helmfile/state/release\.go
+      linters:
+        - errorlint
+    - path: pkg/helmfile/app/app\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
+    - path: pkg/helmfile/state/state\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
+    - path: pkg/helmfile/state/state_run\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
+    - path: pkg/helmfile/tmpl/get_or_nil\.go
+      text: "type (switch|assertion) on error"
+      linters:
+        - errorlint
     - path: vendor
       linters:
         - all

@@ -43,7 +43,7 @@ func (st *HelmState) createReleaseTemplateData(release *ReleaseSpec, vals map[st
 func getBoolRefFromStringTemplate(templateRef string) (*bool, error) {
 	var result bool
 	if err := yaml.Unmarshal([]byte(templateRef), &result); err != nil {
-		return nil, fmt.Errorf("failed deserialising string %s: %v", templateRef, err)
+		return nil, fmt.Errorf("failed deserialising string %s: %w", templateRef, err)
 	}
 	return &result, nil
 }
@@ -51,7 +51,7 @@ func getBoolRefFromStringTemplate(templateRef string) (*bool, error) {
 func updateBoolTemplatedValues(r *ReleaseSpec) error {
 	if r.InstalledTemplate != nil {
 		if installed, err := getBoolRefFromStringTemplate(*r.InstalledTemplate); err != nil {
-			return fmt.Errorf("installedTemplate: %v", err)
+			return fmt.Errorf("installedTemplate: %w", err)
 		} else {
 			r.InstalledTemplate = nil
 			r.Installed = installed
@@ -60,7 +60,7 @@ func updateBoolTemplatedValues(r *ReleaseSpec) error {
 
 	if r.WaitTemplate != nil {
 		if wait, err := getBoolRefFromStringTemplate(*r.WaitTemplate); err != nil {
-			return fmt.Errorf("waitTemplate: %v", err)
+			return fmt.Errorf("waitTemplate: %w", err)
 		} else {
 			r.WaitTemplate = nil
 			r.Wait = wait
@@ -69,7 +69,7 @@ func updateBoolTemplatedValues(r *ReleaseSpec) error {
 
 	if r.VerifyTemplate != nil {
 		if verify, err := getBoolRefFromStringTemplate(*r.VerifyTemplate); err != nil {
-			return fmt.Errorf("verifyTemplate: %v", err)
+			return fmt.Errorf("verifyTemplate: %w", err)
 		} else {
 			r.VerifyTemplate = nil
 			r.Verify = verify

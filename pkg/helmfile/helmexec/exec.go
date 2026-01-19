@@ -2,6 +2,7 @@ package helmexec
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -568,7 +569,7 @@ func (helm *execer) DecryptSecret(context HelmContext, name string, flags ...str
 			var data helmSecretDataV3
 			err := yaml.Unmarshal(secretBytes, &data)
 			if err != nil {
-				return "", fmt.Errorf("could not unmarshall helm secret plugin V3 decrypted file to a yaml string, you may consider upgrading your helm secrets plugin to >4.0: %s", err.Error())
+				return "", fmt.Errorf("could not unmarshall helm secret plugin V3 decrypted file to a yaml string, you may consider upgrading your helm secrets plugin to >4.0: %v", err.Error())
 			}
 			secretBytes = []byte(data.Data)
 		}
@@ -685,8 +686,8 @@ func (helm *execer) DiffRelease(context HelmContext, name, chart, namespace stri
 		}
 	}
 	if detailedExitcodeEnabled {
-		e, ok := err.(ExitError)
-		if ok && e.ExitStatus() == 2 {
+		var e ExitError
+		if errors.As(err, &e) && e.ExitStatus() == 2 {
 			if !(suppressDiff) {
 				helm.write(context.Writer, out)
 			}
